@@ -1,11 +1,18 @@
-use eyre::Result;
-use try_traits::default::TryDefault;
 use crate::config::Config;
+use eyre::{Context, Result};
+use try_traits::default::TryDefault;
 
+mod bot;
 mod config;
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let cfg = Config::try_default()?;
-    dbg!(cfg);
+    let framework = bot::default_framework(&cfg);
+    let mut client = bot::default_client(&cfg, framework)
+        .await
+        .context("Failed to get client")?;
+    client.start().await.context("Failed to start client")?;
+
     Ok(())
 }

@@ -10,5 +10,7 @@ eyre = "0.6.6"
 figment = { version = "0.10.6", features = ["toml", "env", "json", "yaml"]}
 serde = "1.0.135"
 serde_derive = "1.0.135"
+serenity = "0.10.10"
+tokio = { version = "1.17.0", features = ["rt", "rt-multi-thread"] }
 try-traits = "0.1.1"
 

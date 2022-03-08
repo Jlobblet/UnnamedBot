@@ -1,12 +1,13 @@
-use figment::{Figment, providers::{Toml}};
-use figment::providers::{Env, Format, Json, Yaml};
-use serde_derive::{Serialize, Deserialize};
 use eyre::{Context, Result};
+use figment::providers::{Env, Format, Json, Toml, Yaml};
+use figment::Figment;
+use serde_derive::Deserialize;
 use try_traits::default::TryDefault;
 
-#[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct Config {
-    pub(crate) discord_api_key: String,
+#[derive(Debug, Deserialize)]
+pub struct Config {
+    pub discord_api_key: String,
+    pub prefix: String,
 }
 
 impl TryDefault for Config {
