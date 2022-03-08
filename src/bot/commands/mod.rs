@@ -5,10 +5,10 @@ use serenity::prelude::*;
 
 #[group]
 #[commands(ping)]
-pub struct General;
+pub(crate) struct General;
 
 #[command]
-pub async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
+pub(crate) async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
     msg.reply(ctx, "🏓").await?;
     Ok(())
 }

@@ -4,16 +4,16 @@ use eyre::{Context, Result};
 use serenity::framework::{Framework, StandardFramework};
 use serenity::Client;
 
-pub mod commands;
-pub mod handler;
+pub(crate) mod commands;
+pub(crate) mod handler;
 
-pub fn default_framework(cfg: &Config) -> StandardFramework {
+pub(crate) fn default_framework(cfg: &Config) -> StandardFramework {
     StandardFramework::new()
         .configure(|c| c.prefix(cfg.prefix.clone()))
         .group(&GENERAL_GROUP)
 }
 
-pub async fn default_client<F>(cfg: &Config, framework: F) -> Result<Client>
+pub(crate) async fn default_client<F>(cfg: &Config, framework: F) -> Result<Client>
 where
     F: Framework + Send + Sync + 'static,
 {
