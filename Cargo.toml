@@ -13,6 +13,6 @@ serde = "1.0.135"
 serde_derive = "1.0.135"
 serenity = "0.10.10"
 simple_logger = "2.1.0"
-tokio = { version = "1.17.0", features = ["rt", "rt-multi-thread"] }
+tokio = { version = "1.17.0", features = ["rt-multi-thread"] }
 try-traits = "0.1.1"
 
