@@ -1,8 +1,14 @@
 [package]
-name = "UnnamedBot"
+name = "unnamed_bot"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+eyre = "0.6.6"
+figment = { version = "0.10.6", features = ["toml", "env", "json", "yaml"]}
+serde = "1.0.135"
+serde_derive = "1.0.135"
+try-traits = "0.1.1"
+

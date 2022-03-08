@@ -5,3 +5,5 @@ target/
 
 .idea/
 
+UnnamedBot.*
+!UnnamedBot.example.*
