@@ -43,7 +43,13 @@ impl FromStr for Transformation {
                         .ok_or_else(|| eyre!("ratio did not contain two parts"))?;
                     let a = f32::from_str(a)?;
                     let b = f32::from_str(b)?;
-                    Ok((a, b))
+                    if a.is_nan() || a.is_infinite() {
+                        Err(eyre!("a was nan or infinite"))
+                    } else if b.is_nan() || b.is_infinite() {
+                        Err(eyre!("b was nan or infinite"))
+                    } else {
+                        Ok((a, b))
+                    }
                 }
 
                 match t {
