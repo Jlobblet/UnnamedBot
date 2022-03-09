@@ -73,7 +73,7 @@ async fn transform(ctx: &SContext, msg: &Message, mut args: Args) -> CommandResu
     let opt: TransformationOpt = TransformationOpt::try_parse_from(&to_parse)?;
 
     let mut url = opt.image.unwrap_or_else(|| msg.author.face());
-    if url.starts_with('<') && url.ends_with('>') { url = url[1..^1] }
+    if url.starts_with('<') && url.ends_with('>') { url = url[1..url.len()].to_string(); }
     let (format, mut image) = download_image(url).await?;
 
     image = opt
