@@ -16,6 +16,7 @@ enum Transformation {
     Blur(f32),
     Contrast(f32),
     Huerotate(i32),
+    Brighten(i32),
 }
 
 impl FromStr for Transformation {
@@ -35,6 +36,7 @@ impl FromStr for Transformation {
                     "blur" => Ok(Transformation::Blur(f32amount()?)),
                     "contrast" => Ok(Transformation::Contrast(f32amount()?)),
                     "huerotate" => Ok(Transformation::Huerotate(i32amount()?)),
+                    "brighten" => Ok(Transformation::Brighten(i32amount()?)),
                     _ => Err(eyre!("Unknown transformation")),
                 }
             }
@@ -54,6 +56,7 @@ impl Transformation {
             Transformation::Blur(sigma) => image.blur(sigma),
             Transformation::Contrast(c) => image.adjust_contrast(c),
             Transformation::Huerotate(value) => image.huerotate(value),
+            Transformation::Brighten(value) => image.brighten(value),
         }
     }
 }
