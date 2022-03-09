@@ -1,6 +1,8 @@
+extern crate core;
+
 use crate::config::Config;
 use eyre::{Context, Result};
-use log::{debug, info, Level};
+use log::{debug, info};
 use try_traits::default::TryDefault;
 
 mod bot;
@@ -8,12 +10,7 @@ mod config;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let level = if cfg!(debug_assertions) {
-        Level::Debug
-    } else {
-        Level::Info
-    };
-    simple_logger::init_with_level(level)?;
+    flexi_logger::Logger::try_with_str("warn")?.start()?;
     info!("Starting bot");
 
     debug!("Creating config");
