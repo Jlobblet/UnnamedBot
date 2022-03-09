@@ -1,13 +1,14 @@
 use clap::Parser;
 use eyre::{eyre, Context, ContextCompat, Result};
+use image::imageops::FilterType;
 use image::{DynamicImage, ImageFormat};
 use reqwest::{get, Url};
 use serenity::client::Context as SContext;
 use serenity::framework::standard::macros::{command, group};
 use serenity::framework::standard::{Args, CommandResult};
 use serenity::model::prelude::*;
+use std::collections::VecDeque;
 use std::str::FromStr;
-use image::imageops::FilterType;
 use tempfile::tempdir;
 
 #[derive(Debug, Copy, Clone)]
@@ -37,7 +38,9 @@ impl FromStr for Transformation {
                     .split_once('=')
                     .context("Contained incorrect number of parts")?;
                 fn f32ratio_amount(amount: &str) -> Result<(f32, f32)> {
-                    let (a, b) = amount.split_once(':').ok_or_else(|| eyre!("ratio did not contain two parts"))?;
+                    let (a, b) = amount
+                        .split_once(':')
+                        .ok_or_else(|| eyre!("ratio did not contain two parts"))?;
                     let a = f32::from_str(a)?;
                     let b = f32::from_str(b)?;
                     Ok((a, b))
@@ -93,9 +96,8 @@ pub(crate) struct Image;
 
 #[command]
 async fn transform(ctx: &SContext, msg: &Message, mut args: Args) -> CommandResult {
-    // bit of a hack to get the first argument to be the "program name" so clap doesn't discard it
-    let mut to_parse = vec!["transform".to_string()];
-    to_parse.extend(args.iter::<String>().collect::<Result<Vec<_>, _>>()?);
+    let mut to_parse = args.iter::<String>().collect::<Result<VecDeque<_>, _>>()?;
+    to_parse.push_front("transform".to_string());
     let opt: TransformationOpt = TransformationOpt::try_parse_from(&to_parse)?;
 
     let mut url = opt.image.unwrap_or_else(|| msg.author.face());
