@@ -7,6 +7,7 @@ use serenity::framework::standard::macros::{command, group};
 use serenity::framework::standard::{Args, CommandResult};
 use serenity::model::prelude::*;
 use std::str::FromStr;
+use image::imageops::FilterType;
 use tempfile::tempdir;
 
 #[derive(Debug, Copy, Clone)]
@@ -17,6 +18,7 @@ enum Transformation {
     Contrast(f32),
     Huerotate(i32),
     Brighten(i32),
+    Resize((f32, f32)),
 }
 
 impl FromStr for Transformation {
@@ -30,13 +32,19 @@ impl FromStr for Transformation {
                 let (t, amount) = s
                     .split_once('=')
                     .context("Contained incorrect number of parts")?;
-                let f32amount = || f32::from_str(amount);
-                let i32amount = || i32::from_str(amount);
+                fn f32ratio_amount(amount: &str) -> Result<(f32, f32)> {
+                    let (a, b) = amount.split_once(':').ok_or_else(|| eyre!("ratio did not contain two parts"))?;
+                    let a = f32::from_str(a)?;
+                    let b = f32::from_str(b)?;
+                    Ok((a, b))
+                }
+
                 match t {
-                    "blur" => Ok(Transformation::Blur(f32amount()?)),
-                    "contrast" => Ok(Transformation::Contrast(f32amount()?)),
-                    "huerotate" => Ok(Transformation::Huerotate(i32amount()?)),
-                    "brighten" => Ok(Transformation::Brighten(i32amount()?)),
+                    "blur" => Ok(Transformation::Blur(f32::from_str(amount)?)),
+                    "contrast" => Ok(Transformation::Contrast(f32::from_str(amount)?)),
+                    "huerotate" => Ok(Transformation::Huerotate(i32::from_str(amount)?)),
+                    "brighten" => Ok(Transformation::Brighten(i32::from_str(amount)?)),
+                    "resize" => Ok(Transformation::Resize(f32ratio_amount(amount)?)),
                     _ => Err(eyre!("Unknown transformation")),
                 }
             }
@@ -57,6 +65,11 @@ impl Transformation {
             Transformation::Contrast(c) => image.adjust_contrast(c),
             Transformation::Huerotate(value) => image.huerotate(value),
             Transformation::Brighten(value) => image.brighten(value),
+            Transformation::Resize((a, b)) => {
+                let nwidth = (image.width() as f32 * a) as u32;
+                let nheight = (image.height() as f32 * b) as u32;
+                image.resize(nwidth, nheight, FilterType::CatmullRom)
+            }
         }
     }
 }
@@ -80,7 +93,9 @@ async fn transform(ctx: &SContext, msg: &Message, mut args: Args) -> CommandResu
     let opt: TransformationOpt = TransformationOpt::try_parse_from(&to_parse)?;
 
     let mut url = opt.image.unwrap_or_else(|| msg.author.face());
-    if url.starts_with('<') && url.ends_with('>') { url = url[1..url.len()].to_string(); }
+    if url.starts_with('<') && url.ends_with('>') {
+        url = url[1..url.len()].to_string();
+    }
     let (format, mut image) = download_image(url).await?;
 
     image = opt
