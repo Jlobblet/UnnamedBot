@@ -68,7 +68,7 @@ impl Transformation {
             Transformation::Resize((a, b)) => {
                 let nwidth = (image.width() as f32 * a) as u32;
                 let nheight = (image.height() as f32 * b) as u32;
-                image.resize(nwidth, nheight, FilterType::CatmullRom)
+                image.resize_exact(nwidth, nheight, FilterType::CatmullRom)
             }
         }
     }
