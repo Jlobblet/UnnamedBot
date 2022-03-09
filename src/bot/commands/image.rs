@@ -239,7 +239,10 @@ async fn respond_with_image(
 
     let files = vec![file];
     msg.channel_id
-        .send_files(ctx, &files, |m| m.reference_message(msg))
+        .send_files(ctx, &files, |m| {
+            m.reference_message(msg);
+            m.allowed_mentions(|a| a.empty_users())
+        })
         .await
         .context("Failed to send message")
 }
