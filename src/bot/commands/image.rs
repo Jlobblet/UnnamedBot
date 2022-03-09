@@ -14,6 +14,8 @@ use tempfile::tempdir;
 enum Transformation {
     Invert,
     Greyscale,
+    Fliph,
+    Flipv,
     Blur(f32),
     Contrast(f32),
     Huerotate(i32),
@@ -28,6 +30,8 @@ impl FromStr for Transformation {
         match s.to_lowercase().as_ref() {
             "invert" => Ok(Transformation::Invert),
             "greyscale" | "grayscale" => Ok(Transformation::Greyscale),
+            "fliph" | "flipx" => Ok(Transformation::Fliph),
+            "flipv" | "flipy" => Ok(Transformation::Flipv),
             s => {
                 let (t, amount) = s
                     .split_once('=')
@@ -60,6 +64,8 @@ impl Transformation {
                 image.invert();
                 image
             }
+            Transformation::Fliph => image.fliph(),
+            Transformation::Flipv => image.flipv(),
             Transformation::Greyscale => image.grayscale(),
             Transformation::Blur(sigma) => image.blur(sigma),
             Transformation::Contrast(c) => image.adjust_contrast(c),
