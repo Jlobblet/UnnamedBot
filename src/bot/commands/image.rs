@@ -56,6 +56,8 @@ impl Transformation {
 
 #[derive(Debug, Parser)]
 struct TransformationOpt {
+    #[clap(short)]
+    image: Option<String>,
     transformations: Vec<Transformation>,
 }
 
@@ -70,7 +72,9 @@ async fn transform(ctx: &SContext, msg: &Message, mut args: Args) -> CommandResu
     to_parse.extend(args.iter::<String>().collect::<Result<Vec<_>, _>>()?);
     let opt: TransformationOpt = TransformationOpt::try_parse_from(&to_parse)?;
 
-    let (format, mut image) = parse_user_avatar(ctx, msg, &mut args).await?;
+    let url = opt.image.unwrap_or_else(|| msg.author.face());
+    let (format, mut image) = download_image(url).await?;
+
     image = opt
         .transformations
         .into_iter()
@@ -141,8 +145,7 @@ fn get_extension(format: ImageFormat) -> &'static str {
     }
 }
 
-async fn download_avatar(user: &User) -> Result<(ImageFormat, DynamicImage)> {
-    let url = user.face();
+async fn download_image(url: String) -> Result<(ImageFormat, DynamicImage)> {
     let format = get_format(&url)?;
     let response = get(url).await?;
     let bytes = response.bytes().await?;
@@ -172,7 +175,8 @@ async fn parse_user_avatar(
             .ok_or_else(|| eyre!("could not find guild"))?;
         guild.member(ctx, id).await?.user
     };
-    download_avatar(&user).await
+    let url = user.face();
+    download_image(url).await
 }
 
 async fn respond_with_image(
