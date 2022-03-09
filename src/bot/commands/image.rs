@@ -1,3 +1,4 @@
+use clap::Parser;
 use eyre::{eyre, Context, ContextCompat, Result};
 use image::{DynamicImage, ImageFormat};
 use reqwest::{get, Url};
@@ -5,11 +6,79 @@ use serenity::client::Context as SContext;
 use serenity::framework::standard::macros::{command, group};
 use serenity::framework::standard::{Args, CommandResult};
 use serenity::model::prelude::*;
+use std::str::FromStr;
 use tempfile::tempdir;
 
+#[derive(Debug, Copy, Clone)]
+enum Transformation {
+    Invert,
+    Greyscale,
+    Blur(f32),
+    Contrast(f32),
+}
+
+impl FromStr for Transformation {
+    type Err = eyre::Report;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_ref() {
+            "invert" => Ok(Transformation::Invert),
+            "greyscale" | "grayscale" => Ok(Transformation::Greyscale),
+            s => {
+                let (t, amount) = s
+                    .split_once('=')
+                    .context("Contained incorrect number of parts")?;
+                let amount = f32::from_str(amount)?;
+                match t {
+                    "blur" => Ok(Transformation::Blur(amount)),
+                    "contrast" => Ok(Transformation::Contrast(amount)),
+                    _ => Err(eyre!("Unknown transformation")),
+                }
+            }
+        }
+    }
+}
+
+impl Transformation {
+    pub(crate) fn apply(self, image: DynamicImage) -> DynamicImage {
+        match self {
+            Transformation::Invert => {
+                let mut image = image;
+                image.invert();
+                image
+            }
+            Transformation::Greyscale => image.grayscale(),
+            Transformation::Blur(sigma) => image.blur(sigma),
+            Transformation::Contrast(c) => image.adjust_contrast(c),
+        }
+    }
+}
+
+#[derive(Debug, Parser)]
+struct TransformationOpt {
+    transformations: Vec<Transformation>,
+}
+
 #[group]
-#[commands(getpfp, invert, greyscale, blur, contrast)]
+#[commands(transform, getpfp, invert, greyscale, blur, contrast)]
 pub(crate) struct Image;
+
+#[command]
+async fn transform(ctx: &SContext, msg: &Message, mut args: Args) -> CommandResult {
+    // bit of a hack to get the first argument to be the "program name" so clap doesn't discard it
+    let mut to_parse = vec!["transform".to_string()];
+    to_parse.extend(args.iter::<String>().collect::<Result<Vec<_>, _>>()?);
+    let opt: TransformationOpt = TransformationOpt::try_parse_from(&to_parse)?;
+
+    let (format, mut image) = parse_user_avatar(ctx, msg, &mut args).await?;
+    image = opt
+        .transformations
+        .into_iter()
+        .fold(image, |i, t| t.apply(i));
+
+    respond_with_image(ctx, msg, format, &mut image).await?;
+    Ok(())
+}
 
 #[command]
 async fn getpfp(ctx: &SContext, msg: &Message) -> CommandResult {
@@ -23,7 +92,7 @@ async fn invert(ctx: &SContext, msg: &Message, mut args: Args) -> CommandResult 
     let (format, mut image) = parse_user_avatar(ctx, msg, &mut args).await?;
     image.invert();
 
-    respond_with_image(ctx, &msg, format, &mut image).await?;
+    respond_with_image(ctx, msg, format, &mut image).await?;
     Ok(())
 }
 
@@ -32,7 +101,7 @@ async fn greyscale(ctx: &SContext, msg: &Message, mut args: Args) -> CommandResu
     let (format, mut image) = parse_user_avatar(ctx, msg, &mut args).await?;
     image = image.grayscale();
 
-    respond_with_image(ctx, &msg, format, &mut image).await?;
+    respond_with_image(ctx, msg, format, &mut image).await?;
     Ok(())
 }
 
@@ -44,16 +113,16 @@ async fn blur(ctx: &SContext, msg: &Message, mut args: Args) -> CommandResult {
     image = image.blur(w / 40.0);
 
     reaction.delete(ctx).await?;
-    respond_with_image(ctx, &msg, format, &mut image).await?;
+    respond_with_image(ctx, msg, format, &mut image).await?;
     Ok(())
 }
 
 #[command]
 async fn contrast(ctx: &SContext, msg: &Message, mut args: Args) -> CommandResult {
     let (format, mut image) = parse_user_avatar(ctx, msg, &mut args).await?;
-    image = image.adjust_contrast(1.5);
+    image = image.adjust_contrast(100.0);
 
-    respond_with_image(ctx, &msg, format, &mut image).await?;
+    respond_with_image(ctx, msg, format, &mut image).await?;
     Ok(())
 }
 
