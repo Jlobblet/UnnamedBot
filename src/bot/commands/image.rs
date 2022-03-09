@@ -15,6 +15,7 @@ enum Transformation {
     Greyscale,
     Blur(f32),
     Contrast(f32),
+    Huerotate(i32),
 }
 
 impl FromStr for Transformation {
@@ -28,10 +29,12 @@ impl FromStr for Transformation {
                 let (t, amount) = s
                     .split_once('=')
                     .context("Contained incorrect number of parts")?;
-                let amount = f32::from_str(amount)?;
+                let f32amount = || f32::from_str(amount);
+                let i32amount = || i32::from_str(amount);
                 match t {
-                    "blur" => Ok(Transformation::Blur(amount)),
-                    "contrast" => Ok(Transformation::Contrast(amount)),
+                    "blur" => Ok(Transformation::Blur(f32amount()?)),
+                    "contrast" => Ok(Transformation::Contrast(f32amount()?)),
+                    "huerotate" => Ok(Transformation::Huerotate(i32amount()?)),
                     _ => Err(eyre!("Unknown transformation")),
                 }
             }
@@ -50,6 +53,7 @@ impl Transformation {
             Transformation::Greyscale => image.grayscale(),
             Transformation::Blur(sigma) => image.blur(sigma),
             Transformation::Contrast(c) => image.adjust_contrast(c),
+            Transformation::Huerotate(value) => image.huerotate(value),
         }
     }
 }
