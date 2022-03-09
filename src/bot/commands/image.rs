@@ -86,6 +86,8 @@ impl Transformation {
 #[derive(Debug, Parser)]
 struct TransformationOpt {
     #[clap(short)]
+    user: Option<u64>,
+    #[clap(short)]
     image: Option<String>,
     transformations: Vec<Transformation>,
 }
@@ -100,7 +102,20 @@ async fn transform(ctx: &SContext, msg: &Message, mut args: Args) -> CommandResu
     to_parse.push_front("transform".to_string());
     let opt: TransformationOpt = TransformationOpt::try_parse_from(&to_parse)?;
 
-    let mut url = opt.image.unwrap_or_else(|| msg.author.face());
+    let mut url = if let Some(user_id) = opt.user {
+        let guild = msg
+            .guild(ctx)
+            .await
+            .context("Message not sent in a guild")?;
+        let user = guild
+            .member(ctx, user_id)
+            .await
+            .context("Could not find member in guild")?
+            .user;
+        user.face()
+    } else {
+        opt.image.unwrap_or_else(|| msg.author.face())
+    };
     if url.starts_with('<') && url.ends_with('>') {
         url = url[1..url.len()].to_string();
     }
