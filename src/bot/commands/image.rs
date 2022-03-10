@@ -22,6 +22,7 @@ enum Transformation {
     Huerotate(i32),
     Brighten(i32),
     Resize((f32, f32)),
+    Unsharpen((f32, i32)),
 }
 
 impl FromStr for Transformation {
@@ -37,6 +38,7 @@ impl FromStr for Transformation {
                 let (t, amount) = s
                     .split_once('=')
                     .with_context(|| anyhow!("{s} did not match any of the parameterless verbs and did not contain an `=`"))?;
+
                 fn f32ratio_amount(amount: &str) -> Result<(f32, f32)> {
                     let (a, b) = amount
                         .split_once(':')
@@ -52,12 +54,26 @@ impl FromStr for Transformation {
                     }
                 }
 
+                fn f32i32pair_amount(amount: &str) -> Result<(f32, i32)> {
+                    let (a, b) = amount
+                        .split_once(':')
+                        .ok_or_else(|| anyhow!("ratio did not contain two parts"))?;
+                    let a = f32::from_str(a)?;
+                    let b = i32::from_str(b)?;
+                    if a.is_nan() || a.is_infinite() {
+                        Err(anyhow!("a was nan or infinite"))
+                    } else {
+                        Ok((a, b))
+                    }
+                }
+
                 match t {
                     "blur" => Ok(Transformation::Blur(f32::from_str(amount)?)),
                     "contrast" => Ok(Transformation::Contrast(f32::from_str(amount)?)),
                     "huerotate" => Ok(Transformation::Huerotate(i32::from_str(amount)?)),
                     "brighten" => Ok(Transformation::Brighten(i32::from_str(amount)?)),
                     "resize" => Ok(Transformation::Resize(f32ratio_amount(amount)?)),
+                    "unsharpen" => Ok(Transformation::Unsharpen(f32i32pair_amount(amount)?)),
                     _ => Err(anyhow!("Unknown transformation")),
                 }
             }
@@ -83,7 +99,8 @@ impl Transformation {
                 let nwidth = (image.width() as f32 * a) as u32;
                 let nheight = (image.height() as f32 * b) as u32;
                 image.resize_exact(nwidth, nheight, FilterType::CatmullRom)
-            }
+            },
+            Transformation::Unsharpen((s, t)) => image.unsharpen(s, t),
         }
     }
 }
