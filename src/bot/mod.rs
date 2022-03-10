@@ -1,29 +1,48 @@
-use crate::bot::commands::{GENERAL_GROUP, HYENA_GROUP, IMAGE_GROUP};
 use crate::Config;
-use eyre::{Context, Result};
+use anyhow::Result;
+use serenity::client::bridge::gateway::ShardManager;
+use serenity::client::ClientBuilder;
+use serenity::framework::standard::CommandGroup;
 use serenity::framework::{Framework, StandardFramework};
+use serenity::prelude::TypeMapKey;
 use serenity::Client;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 pub(crate) mod commands;
 pub(crate) mod handler;
 pub(crate) mod hooks;
 
-pub(crate) fn default_framework(cfg: &Config) -> StandardFramework {
-    StandardFramework::new()
-        .configure(|c| c.prefix(cfg.prefix.clone()))
-        .after(hooks::after)
-        .group(&GENERAL_GROUP)
-        .group(&IMAGE_GROUP)
-        .group(&HYENA_GROUP)
+pub(crate) struct ShardManagerContainer;
+
+impl TypeMapKey for ShardManagerContainer {
+    type Value = Arc<Mutex<ShardManager>>;
 }
 
-pub(crate) async fn default_client<F>(cfg: &Config, framework: F) -> Result<Client>
+pub(crate) fn default_framework(
+    cfg: &Config,
+    groups: &[&'static CommandGroup],
+) -> StandardFramework {
+    let mut framework = StandardFramework::new()
+        .configure(|c| c.prefix(cfg.prefix.clone()))
+        .before(hooks::before)
+        .after(hooks::after);
+
+    for group in groups {
+        framework.group_add(group);
+    }
+
+    framework
+}
+
+pub(crate) async fn default_client_builder<F>(
+    cfg: &Config,
+    framework: F,
+) -> Result<ClientBuilder<'_>>
 where
     F: Framework + Send + Sync + 'static,
 {
-    Client::builder(&cfg.discord_api_key)
+    Ok(Client::builder(&cfg.discord_api_key)
         .event_handler(handler::Handler)
-        .framework(framework)
-        .await
-        .context("Failed to build client")
+        .framework(framework))
 }

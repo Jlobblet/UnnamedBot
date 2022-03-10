@@ -1,5 +1,5 @@
+use anyhow::{anyhow, Context, Result};
 use clap::Parser;
-use eyre::{eyre, Context, ContextCompat, Result};
 use image::imageops::FilterType;
 use image::{DynamicImage, ImageFormat};
 use reqwest::{get, Url};
@@ -25,7 +25,7 @@ enum Transformation {
 }
 
 impl FromStr for Transformation {
-    type Err = eyre::Report;
+    type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_ref() {
@@ -36,17 +36,17 @@ impl FromStr for Transformation {
             s => {
                 let (t, amount) = s
                     .split_once('=')
-                    .context("Contained incorrect number of parts")?;
+                    .with_context(|| anyhow!("{s} did not match any of the parameterless verbs and did not contain an `=`"))?;
                 fn f32ratio_amount(amount: &str) -> Result<(f32, f32)> {
                     let (a, b) = amount
                         .split_once(':')
-                        .ok_or_else(|| eyre!("ratio did not contain two parts"))?;
+                        .ok_or_else(|| anyhow!("ratio did not contain two parts"))?;
                     let a = f32::from_str(a)?;
                     let b = f32::from_str(b)?;
                     if a.is_nan() || a.is_infinite() {
-                        Err(eyre!("a was nan or infinite"))
+                        Err(anyhow!("a was nan or infinite"))
                     } else if b.is_nan() || b.is_infinite() {
-                        Err(eyre!("b was nan or infinite"))
+                        Err(anyhow!("b was nan or infinite"))
                     } else {
                         Ok((a, b))
                     }
@@ -58,7 +58,7 @@ impl FromStr for Transformation {
                     "huerotate" => Ok(Transformation::Huerotate(i32::from_str(amount)?)),
                     "brighten" => Ok(Transformation::Brighten(i32::from_str(amount)?)),
                     "resize" => Ok(Transformation::Resize(f32ratio_amount(amount)?)),
-                    _ => Err(eyre!("Unknown transformation")),
+                    _ => Err(anyhow!("Unknown transformation")),
                 }
             }
         }
@@ -223,7 +223,7 @@ async fn parse_user_avatar(
         let guild = msg
             .guild(ctx)
             .await
-            .ok_or_else(|| eyre!("could not find guild"))?;
+            .ok_or_else(|| anyhow!("could not find guild"))?;
         guild.member(ctx, id).await?.user
     };
     let url = user.face();

@@ -1,4 +1,4 @@
-use eyre::{Context, Result};
+use anyhow::{Context, Result};
 use figment::providers::{Env, Format, Json, Toml, Yaml};
 use figment::Figment;
 use serde_derive::Deserialize;
@@ -11,7 +11,7 @@ pub(crate) struct Config {
 }
 
 impl TryDefault for Config {
-    type Error = eyre::Error;
+    type Error = anyhow::Error;
 
     fn try_default() -> Result<Self> {
         Figment::new()
