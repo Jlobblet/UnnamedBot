@@ -5,7 +5,7 @@ use serenity::client::Context;
 use serenity::model::prelude::*;
 use serenity::{async_trait, client::EventHandler};
 use std::time::Duration;
-use tokio::time::{interval, sleep, Instant, Interval};
+use tokio::time::{interval, Instant};
 
 pub(crate) struct Handler;
 
