@@ -8,21 +8,24 @@ use serenity::prelude::*;
 
 #[hook]
 pub(crate) async fn before(ctx: &Context, msg: &Message, cmd_name: &str) -> bool {
-    let components = {
-        let data = ctx.data.read().await;
-        data.get::<DashboardComponentsContainer>().unwrap().clone()
-    };
+    #[cfg(feature = "dashboard")]
+    {
+        let components = {
+            let data = ctx.data.read().await;
+            data.get::<DashboardComponentsContainer>().unwrap().clone()
+        };
 
-    let CommandUsageValue { index, use_count } = {
-        let mut count_write = components.command_usage_values.lock().await;
-        let mut value = count_write.get_mut(cmd_name).unwrap();
-        value.use_count += 1;
-        *value
-    };
+        let CommandUsageValue { index, use_count } = {
+            let mut count_write = components.command_usage_values.lock().await;
+            let mut value = count_write.get_mut(cmd_name).unwrap();
+            value.use_count += 1;
+            *value
+        };
 
-    components
-        .command_usage_table
-        .set_cell(Row(index), Col(1), use_count);
+        components
+            .command_usage_table
+            .set_cell(Row(index), Col(1), use_count);
+    }
 
     info!(
         "Calling command '{cmd_name}' (invoked by {} at {})",

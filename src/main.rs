@@ -26,17 +26,22 @@ async fn main() -> Result<()> {
     debug!("Creating framework");
     let framework = bot::default_framework(&cfg, &groups);
 
+    #[cfg(feature = "dashboard")]
     debug!("Initialising rillrate");
+    #[cfg(feature = "dashboard")]
     let dashboard_components = dashboard::init_dashboard(&groups).await?;
 
     debug!("Creating client");
-    let mut client = bot::default_client_builder(&cfg, framework)
+    let mut builder = bot::default_client_builder(&cfg, framework)
         .await
-        .context("Failed to get client builder")?
-        .type_map_insert::<DashboardComponentsContainer>(dashboard_components)
-        .await
-        .context("Failed to build client")?;
+        .context("Failed to get client builder")?;
 
+    #[cfg(feature = "dashboard")]
+    builder = builder.type_map_insert::<DashboardComponentsContainer>(dashboard_components);
+
+    let mut client = builder.await.context("Failed to build client")?;
+
+    #[cfg(feature = "dashboard")]
     {
         let mut data = client.data.write().await;
         data.insert::<ShardManagerContainer>(Arc::clone(&client.shard_manager));

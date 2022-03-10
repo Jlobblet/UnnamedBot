@@ -9,7 +9,6 @@ use serenity::framework::standard::{Args, CommandResult};
 use serenity::model::prelude::*;
 use std::collections::VecDeque;
 use std::str::FromStr;
-use log::error;
 use tempfile::tempdir;
 
 #[derive(Debug, Copy, Clone)]

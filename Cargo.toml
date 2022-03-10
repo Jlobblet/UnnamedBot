@@ -3,6 +3,10 @@ name = "unnamed_bot"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["dashboard"]
+dashboard = ["rillrate"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -13,7 +17,7 @@ flexi_logger = "0.22.3"
 image = "0.24.1"
 log = "0.4.14"
 reqwest = "0.11.9"
-rillrate = "0.41.0"
+rillrate = {version = "0.41.0", optional = true }
 serde = "1.0.135"
 serde_derive = "1.0.135"
 serde_json = "1.0.79"

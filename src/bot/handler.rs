@@ -11,6 +11,7 @@ pub(crate) struct Handler;
 
 #[async_trait]
 impl EventHandler for Handler {
+    #[cfg(feature = "dashboard")]
     async fn cache_ready(&self, ctx: Context, _guilds: Vec<GuildId>) {
         info!("Cache is ready");
         tokio::spawn(async move {
