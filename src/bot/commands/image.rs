@@ -56,8 +56,8 @@ impl FromStr for Transformation {
 
                 fn f32i32pair_amount(amount: &str) -> Result<(f32, i32)> {
                     let (a, b) = amount
-                        .split_once(':')
-                        .ok_or_else(|| anyhow!("ratio did not contain two parts"))?;
+                        .split_once(',')
+                        .ok_or_else(|| anyhow!("pair did not contain two parts"))?;
                     let a = f32::from_str(a)?;
                     let b = i32::from_str(b)?;
                     if a.is_nan() || a.is_infinite() {
