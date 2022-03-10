@@ -66,10 +66,9 @@ impl FromStr for Transformation {
 }
 
 impl Transformation {
-    pub(crate) fn apply(self, image: DynamicImage) -> DynamicImage {
+    pub(crate) fn apply(self, mut image: DynamicImage) -> DynamicImage {
         match self {
             Transformation::Invert => {
-                let mut image = image;
                 image.invert();
                 image
             }
