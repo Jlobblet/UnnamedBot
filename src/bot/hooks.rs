@@ -30,7 +30,8 @@ pub(crate) async fn before(ctx: &Context, msg: &Message, cmd_name: &str) -> bool
     }
 
     info!(
-        "Calling command '{cmd_name}' (invoked by {} at {})",
+        "Calling command '{}' (invoked by {} at {})",
+        cmd_name,
         msg.author.tag(),
         msg.timestamp
     );

@@ -37,7 +37,7 @@ impl FromStr for Transformation {
             s => {
                 let (t, amount) = s
                     .split_once('=')
-                    .with_context(|| anyhow!("{s} did not match any of the parameterless verbs and did not contain an `=`"))?;
+                    .with_context(|| anyhow!("{} did not match any of the parameterless verbs and did not contain an `=`", s))?;
 
                 fn f32ratio_amount(amount: &str) -> Result<(f32, f32)> {
                     let (a, b) = amount
