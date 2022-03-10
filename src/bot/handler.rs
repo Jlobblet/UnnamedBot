@@ -1,10 +1,17 @@
+#[cfg(feature = "dashboard")]
 use crate::{DashboardComponentsContainer, ShardManagerContainer};
+#[cfg(feature = "dashboard")]
 use log::info;
+#[cfg(feature = "dashboard")]
 use serenity::client::bridge::gateway::ShardId;
+#[cfg(feature = "dashboard")]
 use serenity::client::Context;
+#[cfg(feature = "dashboard")]
 use serenity::model::prelude::*;
 use serenity::{async_trait, client::EventHandler};
+#[cfg(feature = "dashboard")]
 use std::time::Duration;
+#[cfg(feature = "dashboard")]
 use tokio::time::{interval, Instant};
 
 pub(crate) struct Handler;

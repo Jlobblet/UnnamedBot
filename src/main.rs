@@ -1,8 +1,10 @@
 extern crate core;
 
 use crate::bot::commands::{GENERAL_GROUP, HYENA_GROUP, IMAGE_GROUP};
+#[cfg(feature = "dashboard")]
 use crate::bot::ShardManagerContainer;
 use crate::config::Config;
+#[cfg(feature = "dashboard")]
 use crate::dashboard::DashboardComponentsContainer;
 use anyhow::{Context, Result};
 use log::{debug, info};
