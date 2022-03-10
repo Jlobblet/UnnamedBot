@@ -1,3 +1,4 @@
+#![cfg(feature = "dashboard")]
 use anyhow::{Context, Result};
 use rillrate::prime::table::{Col, Row};
 use rillrate::prime::{Pulse, PulseOpts, Table, TableOpts};

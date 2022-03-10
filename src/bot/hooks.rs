@@ -1,5 +1,7 @@
+#[cfg(feature = "dashboard")]
 use crate::dashboard::{CommandUsageValue, DashboardComponentsContainer};
 use log::{error, info};
+#[cfg(feature = "dashboard")]
 use rillrate::prime::table::{Col, Row};
 use serenity::framework::standard::macros::hook;
 use serenity::framework::standard::CommandResult;
