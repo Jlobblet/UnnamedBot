@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-const PACKAGE: &str = "Unnamed Bots";
+const PACKAGE: &str = "Unnamed Bot";
 const DASHBOARD_STATS: &str = "Statistics";
 const GROUP_LATENCY: &str = "Discord Latency";
 const GROUP_COMMAND_COUNT: &str = "Command Invocation Count";
