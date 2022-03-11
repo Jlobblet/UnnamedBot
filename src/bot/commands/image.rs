@@ -1,7 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
-use image::imageops::FilterType;
-use image::{DynamicImage, ImageFormat};
+use image::{ImageBuffer, ImageFormat, RgbaImage, RgbImage};
 use reqwest::{get, Url};
 use serenity::client::Context as SContext;
 use serenity::framework::standard::macros::{command, group};
@@ -9,7 +8,19 @@ use serenity::framework::standard::{Args, CommandResult};
 use serenity::model::prelude::*;
 use std::collections::VecDeque;
 use std::str::FromStr;
+use image::DynamicImage::ImageRgb8;
+use log::warn;
+use photon_rs::channels::invert;
+use photon_rs::colour_spaces::hue_rotate_hsv;
+use photon_rs::conv::{gaussian_blur, sharpen};
+use photon_rs::effects::{adjust_contrast, colorize, frosted_glass, inc_brightness, solarize};
+use photon_rs::monochrome::{grayscale, grayscale_human_corrected, monochrome};
+use photon_rs::native::save_image;
+use photon_rs::{monochrome, PhotonImage};
+use photon_rs::noise::add_noise_rand;
+use photon_rs::transform::{fliph, flipv, resize, SamplingFilter};
 use tempfile::tempdir;
+use webp::PixelLayout::Rgb;
 
 #[derive(Debug, Copy, Clone)]
 enum Transformation {
@@ -17,12 +28,16 @@ enum Transformation {
     Greyscale,
     Fliph,
     Flipv,
-    Blur(f32),
+    Noise,
+    Frost,
+    Solarise,
+    Colourise,
+    Blur(i32),
     Contrast(f32),
-    Huerotate(i32),
-    Brighten(i32),
+    Huerotate(f32),
+    Brighten(u8),
     Resize((f32, f32)),
-    Unsharpen((f32, i32)),
+    Sharpen(u8),
 }
 
 impl FromStr for Transformation {
@@ -34,6 +49,10 @@ impl FromStr for Transformation {
             "greyscale" | "grayscale" => Ok(Transformation::Greyscale),
             "fliph" | "flipx" => Ok(Transformation::Fliph),
             "flipv" | "flipy" => Ok(Transformation::Flipv),
+            "noise" => Ok(Transformation::Noise),
+            "frost" => Ok(Transformation::Frost),
+            "solarise" | "solarize" => Ok(Transformation::Solarise),
+            "colourise" | "colorize "=> Ok(Transformation::Colourise),
             s => {
                 let (t, amount) = s
                     .split_once('=')
@@ -68,12 +87,12 @@ impl FromStr for Transformation {
                 }
 
                 match t {
-                    "blur" => Ok(Transformation::Blur(f32::from_str(amount)?)),
+                    "blur" => Ok(Transformation::Blur(i32::from_str(amount)?)),
                     "contrast" => Ok(Transformation::Contrast(f32::from_str(amount)?)),
-                    "huerotate" => Ok(Transformation::Huerotate(i32::from_str(amount)?)),
-                    "brighten" => Ok(Transformation::Brighten(i32::from_str(amount)?)),
+                    "huerotate" => Ok(Transformation::Huerotate(f32::from_str(amount)?)),
+                    "brighten" => Ok(Transformation::Brighten(u8::from_str(amount)?)),
                     "resize" => Ok(Transformation::Resize(f32ratio_amount(amount)?)),
-                    "unsharpen" => Ok(Transformation::Unsharpen(f32i32pair_amount(amount)?)),
+                    "sharpen" => Ok(Transformation::Sharpen(u8::from_str(amount)?)),
                     _ => Err(anyhow!("Unknown transformation")),
                 }
             }
@@ -82,26 +101,28 @@ impl FromStr for Transformation {
 }
 
 impl Transformation {
-    pub(crate) fn apply(self, mut image: DynamicImage) -> DynamicImage {
+    pub(crate) fn apply(self, mut image: PhotonImage) -> PhotonImage {
         match self {
-            Transformation::Invert => {
-                image.invert();
-                image
-            }
-            Transformation::Fliph => image.fliph(),
-            Transformation::Flipv => image.flipv(),
-            Transformation::Greyscale => image.grayscale(),
-            Transformation::Blur(sigma) => image.blur(sigma),
-            Transformation::Contrast(c) => image.adjust_contrast(c),
-            Transformation::Huerotate(value) => image.huerotate(value),
-            Transformation::Brighten(value) => image.brighten(value),
+            Transformation::Invert => invert(&mut image),
+            Transformation::Fliph => fliph(&mut image),
+            Transformation::Flipv => flipv(&mut image),
+            Transformation::Noise => image = add_noise_rand(image),
+            Transformation::Greyscale => grayscale_human_corrected(&mut image),
+            Transformation::Frost => frosted_glass(&mut image),
+            Transformation::Solarise => solarize(&mut image),
+            Transformation::Colourise => colorize(&mut image),
+            Transformation::Blur(radius) => gaussian_blur(&mut image, radius),
+            Transformation::Contrast(c) => adjust_contrast(&mut image, c),
+            Transformation::Huerotate(d) => hue_rotate_hsv(&mut image, d),
+            Transformation::Brighten(value) => inc_brightness(&mut image, value),
             Transformation::Resize((a, b)) => {
-                let nwidth = (image.width() as f32 * a) as u32;
-                let nheight = (image.height() as f32 * b) as u32;
-                image.resize_exact(nwidth, nheight, FilterType::CatmullRom)
+                let width = (image.get_width() as f32 * a) as u32;
+                let height = (image.get_height() as f32 * b) as u32;
+                resize(&mut image, width, height, SamplingFilter::CatmullRom);
             },
-            Transformation::Unsharpen((s, t)) => image.unsharpen(s, t),
+            Transformation::Sharpen(n) => (0..n).for_each(|_| sharpen(&mut image)),
         }
+        image
     }
 }
 
@@ -115,7 +136,7 @@ struct TransformationOpt {
 }
 
 #[group]
-#[commands(transform, getpfp, invert, greyscale, blur, contrast)]
+#[commands(transform, getpfp)]
 pub(crate) struct Image;
 
 #[command]
@@ -144,14 +165,14 @@ async fn transform(ctx: &SContext, msg: &Message, mut args: Args) -> CommandResu
         chars.next_back();
         url = chars.collect();
     }
-    let (format, mut image) = download_image(url).await?;
+    let mut image = download_image(url).await?;
 
     image = opt
         .transformations
         .into_iter()
         .fold(image, |i, t| t.apply(i));
 
-    respond_with_image(ctx, msg, format, &mut image).await?;
+    respond_with_image(ctx, msg, &msg.author.name, image).await?;
     Ok(())
 }
 
@@ -159,45 +180,6 @@ async fn transform(ctx: &SContext, msg: &Message, mut args: Args) -> CommandResu
 async fn getpfp(ctx: &SContext, msg: &Message) -> CommandResult {
     let u = msg.author.face();
     msg.reply(ctx, u).await?;
-    Ok(())
-}
-
-#[command]
-async fn invert(ctx: &SContext, msg: &Message, mut args: Args) -> CommandResult {
-    let (format, mut image) = parse_user_avatar(ctx, msg, &mut args).await?;
-    image.invert();
-
-    respond_with_image(ctx, msg, format, &mut image).await?;
-    Ok(())
-}
-
-#[command]
-async fn greyscale(ctx: &SContext, msg: &Message, mut args: Args) -> CommandResult {
-    let (format, mut image) = parse_user_avatar(ctx, msg, &mut args).await?;
-    image = image.grayscale();
-
-    respond_with_image(ctx, msg, format, &mut image).await?;
-    Ok(())
-}
-
-#[command]
-async fn blur(ctx: &SContext, msg: &Message, mut args: Args) -> CommandResult {
-    let (format, mut image) = parse_user_avatar(ctx, msg, &mut args).await?;
-    let reaction = msg.react(ctx, '🕐').await?;
-    let w = image.width() as f32;
-    image = image.blur(w / 40.0);
-
-    reaction.delete(ctx).await?;
-    respond_with_image(ctx, msg, format, &mut image).await?;
-    Ok(())
-}
-
-#[command]
-async fn contrast(ctx: &SContext, msg: &Message, mut args: Args) -> CommandResult {
-    let (format, mut image) = parse_user_avatar(ctx, msg, &mut args).await?;
-    image = image.adjust_contrast(100.0);
-
-    respond_with_image(ctx, msg, format, &mut image).await?;
     Ok(())
 }
 
@@ -216,26 +198,31 @@ fn get_extension(format: ImageFormat) -> &'static str {
     }
 }
 
-async fn download_image(url: String) -> Result<(ImageFormat, DynamicImage)> {
-    let format = get_format(&url)?;
-    let response = get(url).await?;
-    let bytes = response.bytes().await?;
+async fn download_image(url: String) -> Result<PhotonImage> {
+    let format = get_format(&url)
+        .context("Could not determine format when attempting to download image")?;
+    let response = get(&url).await
+        .with_context(|| anyhow!("Failed to get response from {}", &url))?;
+    let bytes = response.bytes().await
+        .context("Failed to get bytes from GET response")?;
     let image = if format == ImageFormat::WebP {
         webp::Decoder::new(&bytes)
             .decode()
             .context("Failed to load WebP image")?
             .to_image()
     } else {
-        image::load_from_memory_with_format(&bytes, format).context("")?
+        image::load_from_memory_with_format(&bytes, format)
+            .with_context(|| anyhow!("Could not load image with format {:?}", format))?
     };
-    Ok((format, image))
+    let raw_pixels = image.to_rgba8().to_vec();
+    Ok(PhotonImage::new(raw_pixels, image.width(), image.height()))
 }
 
 async fn parse_user_avatar(
     ctx: &SContext,
     msg: &Message,
     args: &mut Args,
-) -> Result<(ImageFormat, DynamicImage)> {
+) -> Result<PhotonImage> {
     let user = if args.is_empty() {
         msg.author.clone()
     } else {
@@ -253,14 +240,19 @@ async fn parse_user_avatar(
 async fn respond_with_image(
     ctx: &SContext,
     msg: &Message,
-    format: ImageFormat,
-    image: &mut DynamicImage,
+    filename: &str,
+    image: PhotonImage,
 ) -> Result<Message> {
-    let extension = get_extension(format);
-    let name = format!("{}.{}", &msg.author.name, extension);
-    let dir = tempdir()?;
+    let name = format!("{}.png", filename);
+    let dir = tempdir()
+        .context("Could not create temporary directory")?;
     let file = dir.path().join(&name);
-    image.save(&file)?;
+
+    let image = RgbaImage::from_raw(image.get_width(), image.get_height(), image.get_raw_pixels())
+        .context("Failed to load image for saving")?;
+
+    image.save(&file).context("Failed to save image")?;
+    // save_image(image, file.to_str().context("Failed to create filepath to save")?);
 
     let files = vec![file];
     msg.channel_id
