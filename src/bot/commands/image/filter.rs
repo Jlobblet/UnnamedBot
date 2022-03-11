@@ -39,6 +39,7 @@ impl FromStr for Filter {
         match s.to_lowercase().as_ref() {
             "cali" => Ok(Cali),
             "dramatic" => Ok(Dramatic),
+            "firenze" => Ok(Firenze),
             "golden" => Ok(Golden),
             "lix" => Ok(Lix),
             "lofi" => Ok(Lofi),
