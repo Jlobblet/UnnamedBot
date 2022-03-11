@@ -121,7 +121,7 @@ impl Transformation {
             Resize((a, b)) => {
                 let width = (image.get_width() as f32 * a) as u32;
                 let height = (image.get_height() as f32 * b) as u32;
-                resize(&mut image, width, height, SamplingFilter::CatmullRom);
+                image = resize(&image, width, height, SamplingFilter::CatmullRom);
             },
             Sharpen(n) => (0..n).for_each(|_| sharpen(&mut image)),
             Filter(f) => f.apply(&mut image),
