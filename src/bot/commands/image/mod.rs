@@ -256,7 +256,6 @@ async fn respond_with_image(
         .context("Failed to load image for saving")?;
 
     image.save(&file).context("Failed to save image")?;
-    // save_image(image, file.to_str().context("Failed to create filepath to save")?);
 
     let files = vec![file];
     msg.channel_id
