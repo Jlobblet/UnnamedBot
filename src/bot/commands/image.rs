@@ -62,8 +62,8 @@ impl FromStr for Transformation {
                     let (a, b) = amount
                         .split_once(':')
                         .ok_or_else(|| anyhow!("ratio did not contain two parts"))?;
-                    let a = f32::from_str(a)?;
-                    let b = f32::from_str(b)?;
+                    let a = amount.parse()?;
+                    let b = amount.parse()?;
                     if a.is_nan() || a.is_infinite() {
                         Err(anyhow!("a was nan or infinite"))
                     } else if b.is_nan() || b.is_infinite() {
@@ -77,8 +77,8 @@ impl FromStr for Transformation {
                     let (a, b) = amount
                         .split_once(',')
                         .ok_or_else(|| anyhow!("pair did not contain two parts"))?;
-                    let a = f32::from_str(a)?;
-                    let b = i32::from_str(b)?;
+                    let a = a.parse()?;
+                    let b = b.parse()?;
                     if a.is_nan() || a.is_infinite() {
                         Err(anyhow!("a was nan or infinite"))
                     } else {
@@ -87,12 +87,12 @@ impl FromStr for Transformation {
                 }
 
                 match t {
-                    "blur" => Ok(Transformation::Blur(i32::from_str(amount)?)),
-                    "contrast" => Ok(Transformation::Contrast(f32::from_str(amount)?)),
-                    "huerotate" => Ok(Transformation::Huerotate(f32::from_str(amount)?)),
-                    "brighten" => Ok(Transformation::Brighten(u8::from_str(amount)?)),
+                    "blur" => Ok(Transformation::Blur(amount.parse()?)),
+                    "contrast" => Ok(Transformation::Contrast(amount.parse()?)),
+                    "huerotate" => Ok(Transformation::Huerotate(amount.parse()?)),
+                    "brighten" => Ok(Transformation::Brighten(amount.parse()?)),
                     "resize" => Ok(Transformation::Resize(f32ratio_amount(amount)?)),
-                    "sharpen" => Ok(Transformation::Sharpen(u8::from_str(amount)?)),
+                    "sharpen" => Ok(Transformation::Sharpen(amount.parse()?)),
                     _ => Err(anyhow!("Unknown transformation")),
                 }
             }
