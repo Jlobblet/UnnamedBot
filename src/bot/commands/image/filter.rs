@@ -1,6 +1,6 @@
-use std::str::FromStr;
 use anyhow::anyhow;
 use photon_rs::PhotonImage;
+use std::str::FromStr;
 
 #[derive(Debug, Copy, Clone)]
 pub(super) enum Filter {

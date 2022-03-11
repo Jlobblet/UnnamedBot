@@ -1,8 +1,17 @@
 mod filter;
 
+use crate::bot::commands::image::filter::Filter;
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use image::{ImageFormat, RgbaImage};
+use photon_rs::channels::invert;
+use photon_rs::colour_spaces::hue_rotate_hsv;
+use photon_rs::conv::{gaussian_blur, sharpen};
+use photon_rs::effects::{adjust_contrast, colorize, frosted_glass, inc_brightness, solarize};
+use photon_rs::monochrome::grayscale_human_corrected;
+use photon_rs::noise::add_noise_rand;
+use photon_rs::transform::{fliph, flipv, resize, SamplingFilter};
+use photon_rs::PhotonImage;
 use reqwest::{get, Url};
 use serenity::client::Context as SContext;
 use serenity::framework::standard::macros::{command, group};
@@ -10,16 +19,7 @@ use serenity::framework::standard::{Args, CommandResult};
 use serenity::model::prelude::*;
 use std::collections::VecDeque;
 use std::str::FromStr;
-use photon_rs::channels::invert;
-use photon_rs::colour_spaces::hue_rotate_hsv;
-use photon_rs::conv::{gaussian_blur, sharpen};
-use photon_rs::effects::{adjust_contrast, colorize, frosted_glass, inc_brightness, solarize};
-use photon_rs::monochrome::grayscale_human_corrected;
-use photon_rs::PhotonImage;
-use photon_rs::noise::add_noise_rand;
-use photon_rs::transform::{fliph, flipv, resize, SamplingFilter};
 use tempfile::tempdir;
-use crate::bot::commands::image::filter::Filter;
 
 #[derive(Debug, Copy, Clone)]
 enum Transformation {
@@ -53,7 +53,7 @@ impl FromStr for Transformation {
             "noise" => Ok(Noise),
             "frost" => Ok(Frost),
             "solarise" | "solarize" => Ok(Solarise),
-            "colourise" | "colorize"=> Ok(Colourise),
+            "colourise" | "colorize" => Ok(Colourise),
             s => {
                 let (t, amount) = s
                     .split_once('=')
@@ -122,7 +122,7 @@ impl Transformation {
                 let width = (image.get_width() as f32 * a) as u32;
                 let height = (image.get_height() as f32 * b) as u32;
                 image = resize(&image, width, height, SamplingFilter::CatmullRom);
-            },
+            }
             Sharpen(n) => (0..n).for_each(|_| sharpen(&mut image)),
             Filter(f) => f.apply(&mut image),
         }
@@ -203,11 +203,14 @@ fn get_extension(format: ImageFormat) -> &'static str {
 }
 
 async fn download_image(url: String) -> Result<PhotonImage> {
-    let format = get_format(&url)
-        .context("Could not determine format when attempting to download image")?;
-    let response = get(&url).await
+    let format =
+        get_format(&url).context("Could not determine format when attempting to download image")?;
+    let response = get(&url)
+        .await
         .with_context(|| anyhow!("Failed to get response from {}", &url))?;
-    let bytes = response.bytes().await
+    let bytes = response
+        .bytes()
+        .await
         .context("Failed to get bytes from GET response")?;
     let image = if format == ImageFormat::WebP {
         webp::Decoder::new(&bytes)
@@ -222,11 +225,7 @@ async fn download_image(url: String) -> Result<PhotonImage> {
     Ok(PhotonImage::new(raw_pixels, image.width(), image.height()))
 }
 
-async fn parse_user_avatar(
-    ctx: &SContext,
-    msg: &Message,
-    args: &mut Args,
-) -> Result<PhotonImage> {
+async fn parse_user_avatar(ctx: &SContext, msg: &Message, args: &mut Args) -> Result<PhotonImage> {
     let user = if args.is_empty() {
         msg.author.clone()
     } else {
@@ -248,12 +247,15 @@ async fn respond_with_image(
     image: PhotonImage,
 ) -> Result<Message> {
     let name = format!("{}.png", filename);
-    let dir = tempdir()
-        .context("Could not create temporary directory")?;
+    let dir = tempdir().context("Could not create temporary directory")?;
     let file = dir.path().join(&name);
 
-    let image = RgbaImage::from_raw(image.get_width(), image.get_height(), image.get_raw_pixels())
-        .context("Failed to load image for saving")?;
+    let image = RgbaImage::from_raw(
+        image.get_width(),
+        image.get_height(),
+        image.get_raw_pixels(),
+    )
+    .context("Failed to load image for saving")?;
 
     image.save(&file).context("Failed to save image")?;
 
