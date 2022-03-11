@@ -1,6 +1,8 @@
+mod filter;
+
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
-use image::{ImageBuffer, ImageFormat, RgbaImage, RgbImage};
+use image::{ImageFormat, RgbaImage};
 use reqwest::{get, Url};
 use serenity::client::Context as SContext;
 use serenity::framework::standard::macros::{command, group};
@@ -8,19 +10,16 @@ use serenity::framework::standard::{Args, CommandResult};
 use serenity::model::prelude::*;
 use std::collections::VecDeque;
 use std::str::FromStr;
-use image::DynamicImage::ImageRgb8;
-use log::warn;
 use photon_rs::channels::invert;
 use photon_rs::colour_spaces::hue_rotate_hsv;
 use photon_rs::conv::{gaussian_blur, sharpen};
 use photon_rs::effects::{adjust_contrast, colorize, frosted_glass, inc_brightness, solarize};
-use photon_rs::monochrome::{grayscale, grayscale_human_corrected, monochrome};
-use photon_rs::native::save_image;
-use photon_rs::{monochrome, PhotonImage};
+use photon_rs::monochrome::grayscale_human_corrected;
+use photon_rs::PhotonImage;
 use photon_rs::noise::add_noise_rand;
 use photon_rs::transform::{fliph, flipv, resize, SamplingFilter};
 use tempfile::tempdir;
-use webp::PixelLayout::Rgb;
+use crate::bot::commands::image::filter::Filter;
 
 #[derive(Debug, Copy, Clone)]
 enum Transformation {
@@ -38,21 +37,23 @@ enum Transformation {
     Brighten(u8),
     Resize((f32, f32)),
     Sharpen(u8),
+    Filter(Filter),
 }
 
 impl FromStr for Transformation {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        use Transformation::*;
         match s.to_lowercase().as_ref() {
-            "invert" => Ok(Transformation::Invert),
-            "greyscale" | "grayscale" => Ok(Transformation::Greyscale),
-            "fliph" | "flipx" => Ok(Transformation::Fliph),
-            "flipv" | "flipy" => Ok(Transformation::Flipv),
-            "noise" => Ok(Transformation::Noise),
-            "frost" => Ok(Transformation::Frost),
-            "solarise" | "solarize" => Ok(Transformation::Solarise),
-            "colourise" | "colorize "=> Ok(Transformation::Colourise),
+            "invert" => Ok(Invert),
+            "greyscale" | "grayscale" => Ok(Greyscale),
+            "fliph" | "flipx" => Ok(Fliph),
+            "flipv" | "flipy" => Ok(Flipv),
+            "noise" => Ok(Noise),
+            "frost" => Ok(Frost),
+            "solarise" | "solarize" => Ok(Solarise),
+            "colourise" | "colorize "=> Ok(Colourise),
             s => {
                 let (t, amount) = s
                     .split_once('=')
@@ -62,8 +63,8 @@ impl FromStr for Transformation {
                     let (a, b) = amount
                         .split_once(':')
                         .ok_or_else(|| anyhow!("ratio did not contain two parts"))?;
-                    let a = amount.parse()?;
-                    let b = amount.parse()?;
+                    let a = a.parse::<f32>()?;
+                    let b = b.parse::<f32>()?;
                     if a.is_nan() || a.is_infinite() {
                         Err(anyhow!("a was nan or infinite"))
                     } else if b.is_nan() || b.is_infinite() {
@@ -77,8 +78,8 @@ impl FromStr for Transformation {
                     let (a, b) = amount
                         .split_once(',')
                         .ok_or_else(|| anyhow!("pair did not contain two parts"))?;
-                    let a = a.parse()?;
-                    let b = b.parse()?;
+                    let a = a.parse::<f32>()?;
+                    let b = b.parse::<i32>()?;
                     if a.is_nan() || a.is_infinite() {
                         Err(anyhow!("a was nan or infinite"))
                     } else {
@@ -87,12 +88,13 @@ impl FromStr for Transformation {
                 }
 
                 match t {
-                    "blur" => Ok(Transformation::Blur(amount.parse()?)),
-                    "contrast" => Ok(Transformation::Contrast(amount.parse()?)),
-                    "huerotate" => Ok(Transformation::Huerotate(amount.parse()?)),
-                    "brighten" => Ok(Transformation::Brighten(amount.parse()?)),
-                    "resize" => Ok(Transformation::Resize(f32ratio_amount(amount)?)),
-                    "sharpen" => Ok(Transformation::Sharpen(amount.parse()?)),
+                    "blur" => Ok(Blur(amount.parse()?)),
+                    "contrast" => Ok(Contrast(amount.parse()?)),
+                    "huerotate" => Ok(Huerotate(amount.parse()?)),
+                    "brighten" => Ok(Brighten(amount.parse()?)),
+                    "resize" => Ok(Resize(f32ratio_amount(amount)?)),
+                    "sharpen" => Ok(Sharpen(amount.parse()?)),
+                    "filter" => Ok(Filter(amount.parse()?)),
                     _ => Err(anyhow!("Unknown transformation")),
                 }
             }
@@ -102,25 +104,27 @@ impl FromStr for Transformation {
 
 impl Transformation {
     pub(crate) fn apply(self, mut image: PhotonImage) -> PhotonImage {
+        use Transformation::*;
         match self {
-            Transformation::Invert => invert(&mut image),
-            Transformation::Fliph => fliph(&mut image),
-            Transformation::Flipv => flipv(&mut image),
-            Transformation::Noise => image = add_noise_rand(image),
-            Transformation::Greyscale => grayscale_human_corrected(&mut image),
-            Transformation::Frost => frosted_glass(&mut image),
-            Transformation::Solarise => solarize(&mut image),
-            Transformation::Colourise => colorize(&mut image),
-            Transformation::Blur(radius) => gaussian_blur(&mut image, radius),
-            Transformation::Contrast(c) => adjust_contrast(&mut image, c),
-            Transformation::Huerotate(d) => hue_rotate_hsv(&mut image, d),
-            Transformation::Brighten(value) => inc_brightness(&mut image, value),
-            Transformation::Resize((a, b)) => {
+            Invert => invert(&mut image),
+            Fliph => fliph(&mut image),
+            Flipv => flipv(&mut image),
+            Noise => image = add_noise_rand(image),
+            Greyscale => grayscale_human_corrected(&mut image),
+            Frost => frosted_glass(&mut image),
+            Solarise => solarize(&mut image),
+            Colourise => colorize(&mut image),
+            Blur(radius) => gaussian_blur(&mut image, radius),
+            Contrast(c) => adjust_contrast(&mut image, c),
+            Huerotate(d) => hue_rotate_hsv(&mut image, d),
+            Brighten(value) => inc_brightness(&mut image, value),
+            Resize((a, b)) => {
                 let width = (image.get_width() as f32 * a) as u32;
                 let height = (image.get_height() as f32 * b) as u32;
                 resize(&mut image, width, height, SamplingFilter::CatmullRom);
             },
-            Transformation::Sharpen(n) => (0..n).for_each(|_| sharpen(&mut image)),
+            Sharpen(n) => (0..n).for_each(|_| sharpen(&mut image)),
+            Filter(f) => f.apply(&mut image),
         }
         image
     }
