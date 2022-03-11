@@ -53,7 +53,7 @@ impl FromStr for Transformation {
             "noise" => Ok(Noise),
             "frost" => Ok(Frost),
             "solarise" | "solarize" => Ok(Solarise),
-            "colourise" | "colorize "=> Ok(Colourise),
+            "colourise" | "colorize"=> Ok(Colourise),
             s => {
                 let (t, amount) = s
                     .split_once('=')
