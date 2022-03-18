@@ -1,4 +1,5 @@
 mod filter;
+mod ifunny;
 
 use crate::bot::commands::image::filter::Filter;
 use anyhow::{anyhow, Context, Result};
@@ -20,6 +21,7 @@ use serenity::model::prelude::*;
 use std::collections::VecDeque;
 use std::str::FromStr;
 use tempfile::tempdir;
+use crate::bot::commands::image::ifunny::add_ifunny_watermark;
 
 #[derive(Debug, Copy, Clone)]
 enum Transformation {
@@ -31,6 +33,7 @@ enum Transformation {
     Frost,
     Solarise,
     Colourise,
+    Ifunny,
     Blur(i32),
     Contrast(f32),
     Huerotate(f32),
@@ -54,6 +57,7 @@ impl FromStr for Transformation {
             "frost" => Ok(Frost),
             "solarise" | "solarize" => Ok(Solarise),
             "colourise" | "colorize" => Ok(Colourise),
+            "ifunny" => Ok(Ifunny),
             s => {
                 let (t, amount) = s
                     .split_once('=')
@@ -114,6 +118,7 @@ impl Transformation {
             Frost => frosted_glass(&mut image),
             Solarise => solarize(&mut image),
             Colourise => colorize(&mut image),
+            Ifunny => image = add_ifunny_watermark(image),
             Blur(radius) => gaussian_blur(&mut image, radius),
             Contrast(c) => adjust_contrast(&mut image, c),
             Huerotate(d) => hue_rotate_hsv(&mut image, d),
