@@ -7,6 +7,7 @@ use crate::config::Config;
 #[cfg(feature = "dashboard")]
 use crate::dashboard::DashboardComponentsContainer;
 use anyhow::{Context, Result};
+use flexi_logger::LogSpecification;
 use log::{debug, info};
 #[cfg(feature = "dashboard")]
 use std::sync::Arc;
@@ -18,7 +19,17 @@ mod dashboard;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    flexi_logger::Logger::try_with_str("warn")?.start()?;
+    flexi_logger::Logger::with(LogSpecification::env_or_parse("warn, unnamed_bot=debug")?)
+        .format_for_files(flexi_logger::detailed_format)
+        .adaptive_format_for_stderr(flexi_logger::AdaptiveFormat::Custom(
+            uncoloured_format,
+            coloured_format,
+        ))
+        .adaptive_format_for_stderr(flexi_logger::AdaptiveFormat::Custom(
+            uncoloured_format,
+            coloured_format,
+        ))
+        .start()?;
     info!("Starting bot");
 
     debug!("Creating config");
@@ -29,18 +40,17 @@ async fn main() -> Result<()> {
     debug!("Creating framework");
     let framework = bot::default_framework(&cfg, &groups);
 
-    #[cfg(feature = "dashboard")]
-    debug!("Initialising rillrate");
-    #[cfg(feature = "dashboard")]
-    let dashboard_components = dashboard::init_dashboard(&groups).await?;
-
     debug!("Creating client");
-    let builder = bot::default_client_builder(&cfg, framework)
+    let mut builder = bot::default_client_builder(&cfg, framework)
         .await
         .context("Failed to get client builder")?;
 
     #[cfg(feature = "dashboard")]
-    let builder = builder.type_map_insert::<DashboardComponentsContainer>(dashboard_components);
+    {
+        debug!("Initialising rillrate");
+        let dashboard_components = dashboard::init_dashboard(&groups).await?;
+        builder = builder.type_map_insert::<DashboardComponentsContainer>(dashboard_components);
+    }
 
     let mut client = builder.await.context("Failed to build client")?;
 
@@ -54,4 +64,40 @@ async fn main() -> Result<()> {
     client.start().await.context("Failed to start client")?;
 
     Ok(())
+}
+
+fn uncoloured_format(
+    w: &mut dyn std::io::Write,
+    now: &mut flexi_logger::DeferredNow,
+    record: &log::Record,
+) -> Result<(), std::io::Error> {
+    write!(
+        w,
+        "[{}] [{} {}:{}] {} {}",
+        now.format(flexi_logger::TS_DASHES_BLANK_COLONS_DOT_BLANK),
+        record.module_path().unwrap_or("<unnamed>"),
+        record.file().unwrap_or("<unnamed>"),
+        record.line().unwrap_or(0),
+        record.level(),
+        &record.args().to_string(),
+    )
+}
+
+fn coloured_format(
+    w: &mut dyn std::io::Write,
+    now: &mut flexi_logger::DeferredNow,
+    record: &log::Record,
+) -> Result<(), std::io::Error> {
+    let level = record.level();
+    write!(
+        w,
+        "[{}] [{} {}:{}] {} {}",
+        flexi_logger::style(level)
+            .paint(now.format(flexi_logger::TS_DASHES_BLANK_COLONS_DOT_BLANK)),
+        flexi_logger::style(level).paint(record.module_path().unwrap_or("<unnamed>")),
+        record.file().unwrap_or("<unnamed>"),
+        record.line().unwrap_or(0),
+        flexi_logger::style(level).paint(level.to_string()),
+        flexi_logger::style(level).paint(&record.args().to_string())
+    )
 }
