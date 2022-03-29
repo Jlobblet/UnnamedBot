@@ -1,11 +1,10 @@
-use photon_rs::{PhotonImage, Rgba};
 use photon_rs::multiple::watermark;
 use photon_rs::native::open_image;
 use photon_rs::transform::padding_bottom;
+use photon_rs::{PhotonImage, Rgba};
 
 fn add_watermark(mut image: PhotonImage, path: &str) -> PhotonImage {
-    let wmark = open_image(path)
-        .expect("Failed to open watermark");
+    let wmark = open_image(path).expect("Failed to open watermark");
 
     let black = Rgba::new(0, 0, 0, 255);
     let y = image.get_height();
@@ -15,4 +14,6 @@ fn add_watermark(mut image: PhotonImage, path: &str) -> PhotonImage {
     image
 }
 
-pub(super) fn add_ifunny_watermark(image: PhotonImage) -> PhotonImage { add_watermark(image, "resources/ifunny.png") }
+pub(super) fn add_ifunny_watermark(image: PhotonImage) -> PhotonImage {
+    add_watermark(image, "resources/ifunny.png")
+}

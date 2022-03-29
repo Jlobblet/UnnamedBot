@@ -6,8 +6,8 @@ use rillrate::prime::{Pulse, PulseOpts, Table, TableOpts};
 use serenity::framework::standard::CommandGroup;
 use serenity::prelude::TypeMapKey;
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::sync::atomic::AtomicU32;
+use std::sync::Arc;
 use sysinfo::{RefreshKind, System, SystemExt};
 use tokio::sync::Mutex;
 
@@ -49,7 +49,12 @@ pub(crate) async fn init_dashboard(
     groups: &[&'static CommandGroup],
 ) -> Result<Arc<DashboardComponents>> {
     rillrate::install("unnamed bot").context("Failed to install rillrate")?;
-    let mut system_info = System::new_with_specifics(RefreshKind::new().with_cpu().with_memory().with_components());
+    let mut system_info = System::new_with_specifics(
+        RefreshKind::new()
+            .with_cpu()
+            .with_memory()
+            .with_components(),
+    );
     system_info.refresh_all();
     let total_memory = system_info.total_memory() as f64;
 

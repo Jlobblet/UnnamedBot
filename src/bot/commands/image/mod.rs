@@ -2,6 +2,7 @@ mod filter;
 mod ifunny;
 
 use crate::bot::commands::image::filter::Filter;
+use crate::bot::commands::image::ifunny::add_ifunny_watermark;
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use image::{ImageFormat, RgbaImage};
@@ -21,7 +22,6 @@ use serenity::model::prelude::*;
 use std::collections::VecDeque;
 use std::str::FromStr;
 use tempfile::tempdir;
-use crate::bot::commands::image::ifunny::add_ifunny_watermark;
 
 #[derive(Debug, Copy, Clone)]
 enum Transformation {

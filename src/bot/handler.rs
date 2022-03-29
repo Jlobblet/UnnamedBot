@@ -1,4 +1,3 @@
-use std::sync::atomic::Ordering;
 #[cfg(feature = "dashboard")]
 use crate::{DashboardComponentsContainer, ShardManagerContainer};
 #[cfg(feature = "dashboard")]
@@ -10,6 +9,7 @@ use serenity::client::Context;
 #[cfg(feature = "dashboard")]
 use serenity::model::prelude::*;
 use serenity::{async_trait, client::EventHandler};
+use std::sync::atomic::Ordering;
 #[cfg(feature = "dashboard")]
 use std::time::Duration;
 use sysinfo::SystemExt;

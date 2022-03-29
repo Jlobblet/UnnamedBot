@@ -9,7 +9,8 @@ use serenity::framework::standard::{Args, CommandResult};
 use serenity::model::prelude::*;
 use serenity::prelude::*;
 
-#[macro_export] macro_rules! parse_args {
+#[macro_export]
+macro_rules! parse_args {
     ($args:expr, $($t:ty),*) => {
         (
             $($args.single::<$t>()?,)*
@@ -30,6 +31,7 @@ async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
 #[command]
 async fn test(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let (i, f, s, b) = parse_args!(args.quoted(), i32, f32, String, bool);
-    msg.reply(ctx, format!("{}, {}, {}, {}", i, f, s, b)).await?;
+    msg.reply(ctx, format!("{}, {}, {}, {}", i, f, s, b))
+        .await?;
     Ok(())
 }
