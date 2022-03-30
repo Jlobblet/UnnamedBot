@@ -63,7 +63,7 @@ impl EventHandler for Handler {
             }
         });
 
-        let ctx_clone = ctx.clone();
+        let ctx_clone = ctx;
         tokio::spawn(async move {
             let components = {
                 let data = ctx_clone.data.write().await;

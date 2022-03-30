@@ -11,14 +11,18 @@ dashboard = ["rillrate"]
 
 [dependencies]
 anyhow = "1.0.56"
-clap = { version = "3.1.6", features = ["derive"]}
-figment = { version = "0.10.6", features = ["toml", "env", "json", "yaml"]}
+chrono = "0.4.19"
+chrono-tz = "0.6.1"
+clap = { version = "3.1.6", features = ["derive"] }
+diesel = { version = "1.4.4", features = ["chrono", "postgres"] }
+dotenv = "0.15.0"
+figment = { version = "0.10.6", features = ["toml", "env", "json", "yaml"] }
 flexi_logger = "0.22.3"
 image = "0.24.1"
 log = "0.4.14"
 photon-rs = "0.3.1"
 reqwest = "0.11.9"
-rillrate = {version = "0.41.0", optional = true }
+rillrate = { version = "0.41.0", optional = true }
 serde = "1.0.135"
 serde_derive = "1.0.135"
 serde_json = "1.0.79"

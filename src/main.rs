@@ -1,21 +1,27 @@
-extern crate core;
+#[macro_use]
+extern crate diesel;
 
-use crate::bot::commands::{GENERAL_GROUP, HYENA_GROUP, IMAGE_GROUP};
+use crate::bot::commands::{ALIAS_GROUP, GENERAL_GROUP, HYENA_GROUP, IMAGE_GROUP};
 #[cfg(feature = "dashboard")]
 use crate::bot::ShardManagerContainer;
 use crate::config::Config;
 #[cfg(feature = "dashboard")]
 use crate::dashboard::DashboardComponentsContainer;
+use crate::database::{establish_connection, PgConnectionContainer};
 use anyhow::{Context, Result};
 use flexi_logger::LogSpecification;
 use log::{debug, info};
 #[cfg(feature = "dashboard")]
 use std::sync::Arc;
+use tokio::sync::Mutex;
 use try_traits::default::TryDefault;
 
 mod bot;
 mod config;
 mod dashboard;
+mod database;
+mod models;
+mod schema;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -35,7 +41,7 @@ async fn main() -> Result<()> {
     debug!("Creating config");
     let cfg = Config::try_default()?;
 
-    let groups = [&GENERAL_GROUP, &HYENA_GROUP, &IMAGE_GROUP];
+    let groups = [&GENERAL_GROUP, &HYENA_GROUP, &IMAGE_GROUP, &ALIAS_GROUP];
 
     debug!("Creating framework");
     let framework = bot::default_framework(&cfg, &groups);
@@ -51,6 +57,9 @@ async fn main() -> Result<()> {
         let dashboard_components = dashboard::init_dashboard(&groups).await?;
         builder = builder.type_map_insert::<DashboardComponentsContainer>(dashboard_components);
     }
+
+    let pg_connection = Arc::new(Mutex::new(establish_connection(&cfg)?));
+    builder = builder.type_map_insert::<PgConnectionContainer>(pg_connection);
 
     let mut client = builder.await.context("Failed to build client")?;
 

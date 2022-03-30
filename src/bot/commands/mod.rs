@@ -1,7 +1,9 @@
+pub mod alias;
 pub mod hyena;
 pub mod image;
 
 pub use self::image::IMAGE_GROUP;
+pub use alias::ALIAS_GROUP;
 pub use hyena::HYENA_GROUP;
 
 use serenity::framework::standard::macros::{command, group};
