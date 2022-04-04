@@ -2,15 +2,10 @@ use super::DB;
 use crate::schema::users;
 use anyhow::{anyhow, Context, Result};
 use chrono_tz::Tz;
-use diesel::{insert_into, Connection, Insertable, QueryDsl, Queryable, RunQueryDsl};
+use diesel::{
+    insert_into, Connection, ExpressionMethods, Insertable, QueryDsl, Queryable, RunQueryDsl,
+};
 use std::fmt::Debug;
-
-#[derive(Clone, Debug, Queryable, Insertable)]
-#[table_name = "users"]
-struct NewUser {
-    user_id: i64,
-    timezone: Option<String>,
-}
 
 #[derive(Copy, Clone, Debug)]
 pub struct User {
@@ -38,11 +33,10 @@ impl User {
         C: Connection<Backend = DB>,
     {
         use crate::schema::users::dsl::*;
-        Ok(users
+        users
             .find(id as i64)
-            .get_result::<NewUser>(conn)
-            .with_context(|| anyhow!("Could not find user {}", id))?
-            .into())
+            .get_result::<User>(conn)
+            .with_context(|| anyhow!("Could not find user {}", id))
     }
 
     pub fn create_user<C>(conn: &C, id: u64) -> Result<Self>
@@ -52,7 +46,7 @@ impl User {
         use crate::schema::users::dsl::*;
         let user = User::new(id);
         insert_into(users)
-            .values(NewUser::from(user))
+            .values(user)
             .execute(conn)
             .with_context(|| anyhow!("Failed to create new user {}", id))?;
         Ok(user)
@@ -68,24 +62,6 @@ impl User {
     }
 }
 
-impl From<User> for NewUser {
-    fn from(user: User) -> Self {
-        Self {
-            user_id: user.user_id as i64,
-            timezone: user.timezone.map(|tz| tz.name().to_string()),
-        }
-    }
-}
-
-impl From<NewUser> for User {
-    fn from(new_user: NewUser) -> Self {
-        Self {
-            user_id: new_user.user_id as u64,
-            timezone: new_user.timezone.and_then(|tz| tz.parse::<Tz>().ok()),
-        }
-    }
-}
-
 impl Queryable<users::SqlType, DB> for User {
     type Row = (i64, Option<String>);
 
@@ -94,6 +70,22 @@ impl Queryable<users::SqlType, DB> for User {
             user_id: row.0 as u64,
             timezone: row.1.and_then(|s| s.parse::<Tz>().ok()),
         }
+    }
+}
+
+impl Insertable<users::table> for User {
+    type Values = <(
+        Option<diesel::dsl::Eq<users::user_id, i64>>,
+        Option<diesel::dsl::Eq<users::timezone, String>>,
+    ) as Insertable<users::table>>::Values;
+
+    fn values(self) -> Self::Values {
+        (
+            Some(users::user_id.eq(self.user_id as i64)),
+            self.timezone
+                .map(|x| users::timezone.eq(x.name().to_string())),
+        )
+            .values()
     }
 }
 
