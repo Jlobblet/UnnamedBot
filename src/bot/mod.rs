@@ -26,7 +26,8 @@ pub(crate) fn default_framework(
     let mut framework = StandardFramework::new()
         .configure(|c| c.prefix(cfg.prefix.clone()))
         .before(hooks::before)
-        .after(hooks::after);
+        .after(hooks::after)
+        .unrecognised_command(hooks::unrecognised_command);
 
     for group in groups {
         framework.group_add(group);

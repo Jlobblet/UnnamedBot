@@ -11,6 +11,7 @@ dashboard = ["rillrate"]
 
 [dependencies]
 anyhow = "1.0.56"
+caseless = "0.2.1"
 chrono = "0.4.19"
 chrono-tz = "0.6.1"
 clap = { version = "3.1.6", features = ["derive"] }
@@ -31,4 +32,5 @@ sysinfo = "0.23.5"
 tempfile = "3.3.0"
 tokio = { version = "1.17.0", features = ["rt-multi-thread"] }
 try-traits = "0.1.1"
+unicode-normalization = "0.1.19"
 webp = "0.2.1"

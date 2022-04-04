@@ -185,6 +185,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4872d67bab6358e59559027aa3b9157c53d9358c51423c17554809a8858e0f8"
 
 [[package]]
+name = "caseless"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "808dab3318747be122cb31d36de18d4d1c81277a76f8332a02b81a3d73463d7f"
+dependencies = [
+ "regex",
+ "unicode-normalization",
+]
+
+[[package]]
 name = "cc"
 version = "1.0.73"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3361,6 +3371,7 @@ name = "unnamed_bot"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "caseless",
  "chrono",
  "chrono-tz",
  "clap",
@@ -3381,6 +3392,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "try-traits",
+ "unicode-normalization",
  "webp",
 ]
 
