@@ -22,7 +22,7 @@ async fn alias_add(ctx: &Context, msg: &Message, mut args: Args) -> CommandResul
 
     let conn = conn.lock().await;
 
-    let user = models::user::User::get_or_create_user(conn.deref(), msg.author.id.0)?;
+    let user = models::user::User::get_or_create(conn.deref(), msg.author.id.0)?;
     let alias = models::alias::Alias::new(user.user_id, command_name, command_text);
 
     let query_result = {

@@ -28,7 +28,7 @@ impl User {
         }
     }
 
-    pub fn get_user<C>(conn: &C, id: u64) -> Result<Self>
+    pub fn get<C>(conn: &C, id: u64) -> Result<Self>
     where
         C: Connection<Backend = DB>,
     {
@@ -39,7 +39,7 @@ impl User {
             .with_context(|| anyhow!("Could not find user {}", id))
     }
 
-    pub fn create_user<C>(conn: &C, id: u64) -> Result<Self>
+    pub fn create<C>(conn: &C, id: u64) -> Result<Self>
     where
         C: Connection<Backend = DB>,
     {
@@ -52,12 +52,12 @@ impl User {
         Ok(user)
     }
 
-    pub fn get_or_create_user<C>(conn: &C, id: u64) -> Result<Self>
+    pub fn get_or_create<C>(conn: &C, id: u64) -> Result<Self>
     where
         C: Connection<Backend = DB>,
     {
-        Self::get_user(conn, id)
-            .or_else(|_| Self::create_user(conn, id))
+        Self::get(conn, id)
+            .or_else(|_| Self::create(conn, id))
             .with_context(|| anyhow!("Failed to get or create user {}", id))
     }
 }
