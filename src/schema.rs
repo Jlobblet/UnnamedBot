@@ -2,6 +2,7 @@ table! {
     aliases (alias_id) {
         alias_id -> Int8,
         user_id -> Int8,
+        guild_id -> Int8,
         command_name -> Text,
         command_text -> Text,
     }

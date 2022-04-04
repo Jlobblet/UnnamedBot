@@ -3379,6 +3379,7 @@ dependencies = [
  "dotenv",
  "figment",
  "flexi_logger",
+ "futures",
  "image 0.24.1",
  "log",
  "photon-rs",

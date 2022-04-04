@@ -55,7 +55,7 @@ async fn main() -> Result<()> {
     #[cfg(feature = "dashboard")]
     {
         debug!("Initialising rillrate");
-        let dashboard_components = dashboard::init_dashboard(&groups).await?;
+        let dashboard_components = dashboard::init_dashboard().await?;
         builder = builder.type_map_insert::<DashboardComponentsContainer>(dashboard_components);
     }
 
