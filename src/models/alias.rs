@@ -1,6 +1,11 @@
 use super::DB;
 use crate::schema::aliases;
-use diesel::{ExpressionMethods, Insertable, Queryable};
+use crate::util::compatibility_case_fold;
+use anyhow::{anyhow, Context, Result};
+use diesel::{
+    Connection, ExpressionMethods, Insertable, OptionalExtension, PgTextExpressionMethods,
+    QueryDsl, Queryable, RunQueryDsl,
+};
 use std::fmt::Debug;
 
 #[derive(Clone, Debug)]
@@ -17,6 +22,20 @@ impl Alias {
             command_name,
             command_text,
         }
+    }
+
+    pub fn search<C>(conn: &C, search_term: &str) -> Result<Option<Alias>>
+    where
+        C: Connection<Backend = DB>,
+    {
+        use crate::schema::aliases::dsl::*;
+        let search_term = compatibility_case_fold(search_term);
+
+        aliases
+            .filter(command_name.ilike(&search_term))
+            .first(conn)
+            .optional()
+            .with_context(|| anyhow!("Failed to find alias from search term {}", &search_term))
     }
 }
 

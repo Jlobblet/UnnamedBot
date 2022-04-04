@@ -22,6 +22,7 @@ mod dashboard;
 mod database;
 mod models;
 mod schema;
+mod util;
 
 #[tokio::main]
 async fn main() -> Result<()> {
