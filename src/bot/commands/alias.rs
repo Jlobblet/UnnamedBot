@@ -63,25 +63,24 @@ async fn remove(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
     let alias = models::alias::Alias::search(conn.deref(), &command_name)?;
 
-    let response =
-        if let Some(a) = alias {
-            let GuildId(guild_id) = msg
-                .guild_id
-                .ok_or("Must be used in the guild where the alias was added")?;
+    let response = if let Some(a) = alias {
+        let GuildId(guild_id) = msg
+            .guild_id
+            .ok_or("Must be used in the guild where the alias was added")?;
 
-            let authorised = a.guild_id == guild_id
-                && (a.user_id == author_id
-                    || user_is_administrator_in_guild(ctx, guild_id, msg.author.id.0).await);
+        let authorised = a.guild_id == guild_id
+            && (a.user_id == author_id
+                || user_is_administrator_in_guild(ctx, guild_id, msg.author.id.0).await);
 
-            if authorised {
-                a.delete(conn.deref())?;
-                "Successfully deleted alias"
-            } else {
-                "You are not the owner of this alias or an administrator"
-            }
+        if authorised {
+            a.delete(conn.deref())?;
+            "Successfully deleted alias"
         } else {
-            "Could not find alias"
-        };
+            "You are not the owner of this alias or an administrator"
+        }
+    } else {
+        "Could not find alias"
+    };
 
     msg.reply(&ctx, response).await?;
 

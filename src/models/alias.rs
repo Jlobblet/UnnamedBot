@@ -10,7 +10,7 @@ use std::fmt::Debug;
 
 #[derive(Clone, Debug)]
 pub struct Alias {
-    alias_id: i64,
+    alias_id: Option<i64>,
     pub user_id: u64,
     pub guild_id: u64,
     pub command_name: String,
@@ -20,7 +20,7 @@ pub struct Alias {
 impl Alias {
     pub fn new(user_id: u64, guild_id: u64, command_name: String, command_text: String) -> Self {
         Self {
-            alias_id: -1,
+            alias_id: None,
             user_id,
             guild_id,
             command_name,
@@ -48,17 +48,14 @@ impl Alias {
     {
         use crate::schema::aliases::dsl::*;
 
-        if self.alias_id < 0 {
-            return Err(anyhow!(
-                "Alias ID was {} (needs to be nonnegative)",
-                self.alias_id
-            ));
+        if let Some(id) = self.alias_id {
+            diesel::delete(aliases.filter(alias_id.eq(id)))
+                .execute(conn)
+                .map(|_| ())
+                .with_context(|| anyhow!("Failed to delete alias with ID {}", id))
+        } else {
+            Err(anyhow!("Alias to delete had no ID"))
         }
-
-        diesel::delete(aliases.filter(alias_id.eq(self.alias_id)))
-            .execute(conn)
-            .map(|_| ())
-            .with_context(|| anyhow!("Failed to delete alias with ID {}", self.alias_id))
     }
 }
 
@@ -71,7 +68,7 @@ impl Queryable<aliases::SqlType, DB> for Alias {
         let guild_id = guild_id as u64;
 
         Alias {
-            alias_id,
+            alias_id: Some(alias_id),
             user_id,
             guild_id,
             command_name,
