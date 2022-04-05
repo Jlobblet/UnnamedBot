@@ -79,18 +79,18 @@ impl Queryable<aliases::SqlType, DB> for Alias {
 
 impl Insertable<aliases::table> for Alias {
     type Values = <(
-        Option<diesel::dsl::Eq<aliases::user_id, i64>>,
-        Option<diesel::dsl::Eq<aliases::guild_id, i64>>,
-        Option<diesel::dsl::Eq<aliases::command_name, String>>,
-        Option<diesel::dsl::Eq<aliases::command_text, String>>,
+        diesel::dsl::Eq<aliases::user_id, i64>,
+        diesel::dsl::Eq<aliases::guild_id, i64>,
+        diesel::dsl::Eq<aliases::command_name, String>,
+        diesel::dsl::Eq<aliases::command_text, String>,
     ) as Insertable<aliases::table>>::Values;
 
     fn values(self) -> Self::Values {
         (
-            Some(aliases::user_id.eq(self.user_id as i64)),
-            Some(aliases::guild_id.eq(self.guild_id as i64)),
-            Some(aliases::command_name.eq(self.command_name)),
-            Some(aliases::command_text.eq(self.command_text)),
+            aliases::user_id.eq(self.user_id as i64),
+            aliases::guild_id.eq(self.guild_id as i64),
+            aliases::command_name.eq(self.command_name),
+            aliases::command_text.eq(self.command_text),
         )
             .values()
     }
@@ -98,18 +98,18 @@ impl Insertable<aliases::table> for Alias {
 
 impl<'a> Insertable<aliases::table> for &'a Alias {
     type Values = <(
-        Option<diesel::dsl::Eq<aliases::user_id, i64>>,
-        Option<diesel::dsl::Eq<aliases::guild_id, i64>>,
-        Option<diesel::dsl::Eq<aliases::command_name, &'a String>>,
-        Option<diesel::dsl::Eq<aliases::command_text, &'a String>>,
+        diesel::dsl::Eq<aliases::user_id, i64>,
+        diesel::dsl::Eq<aliases::guild_id, i64>,
+        diesel::dsl::Eq<aliases::command_name, &'a String>,
+        diesel::dsl::Eq<aliases::command_text, &'a String>,
     ) as Insertable<aliases::table>>::Values;
 
     fn values(self) -> Self::Values {
         (
-            Some(aliases::user_id.eq(self.user_id as i64)),
-            Some(aliases::guild_id.eq(self.guild_id as i64)),
-            Some(aliases::command_name.eq(&self.command_name)),
-            Some(aliases::command_text.eq(&self.command_text)),
+            aliases::user_id.eq(self.user_id as i64),
+            aliases::guild_id.eq(self.guild_id as i64),
+            aliases::command_name.eq(&self.command_name),
+            aliases::command_text.eq(&self.command_text),
         )
             .values()
     }
