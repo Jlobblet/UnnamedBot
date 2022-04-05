@@ -12,6 +12,8 @@ table! {
     reminders (reminder_id) {
         reminder_id -> Int8,
         user_id -> Int8,
+        guild_id -> Int8,
+        channel_id -> Int8,
         reminder_time -> Timestamptz,
         reminder_text -> Text,
         triggered -> Bool,
