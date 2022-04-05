@@ -21,6 +21,12 @@ where
     pub triggered: bool,
 }
 
+pub enum ReminderTriggerOutcome {
+    TooEarly,
+    AlreadyTriggered,
+    Success,
+}
+
 impl<TZ: TimeZone> Reminder<TZ> {
     pub fn new(
         user_id: u64,
@@ -55,18 +61,15 @@ impl<TZ: TimeZone> Reminder<TZ> {
         ))
     }
 
-    pub async fn trigger(&mut self, ctx: &SContext) -> Result<bool> {
+    pub async fn trigger(&mut self, ctx: &SContext) -> Result<ReminderTriggerOutcome> {
+        if self.triggered {
+            return Ok(ReminderTriggerOutcome::AlreadyTriggered);
+        }
+
         let now = Utc::now();
 
         if now < self.reminder_time {
-            return Result::<_>::Ok(false).with_context(|| {
-                anyhow!(
-                    "Too early for reminder {:?} to trigger (now: {}, reminder time: {})",
-                    self.reminder_id,
-                    now,
-                    self.reminder_time.with_timezone(&Utc),
-                )
-            });
+            return Ok(ReminderTriggerOutcome::TooEarly);
         }
 
         let channel = ctx
@@ -106,7 +109,9 @@ impl<TZ: TimeZone> Reminder<TZ> {
                 )
             })?;
 
-            Ok(true)
+            self.triggered = true;
+
+            Ok(ReminderTriggerOutcome::Success)
         } else {
             Err(anyhow!(
                 "Could not send reminder {:?} because channel {} is not a guild channel",
