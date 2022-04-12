@@ -1,11 +1,9 @@
-use std::process::ExitStatus;
-use anyhow::{anyhow, Context};
+use anyhow::Context;
 use reqwest::get;
 use serde_derive::Deserialize;
 use serenity::framework::standard::macros::{command, group};
 use serenity::framework::standard::{Args, CommandError, CommandResult};
 use serenity::model::prelude::*;
-use serenity::prelude::*;
 use serenity::prelude::Context as SContext;
 
 #[derive(Deserialize)]
@@ -26,7 +24,7 @@ async fn yeen(ctx: &SContext, msg: &Message) -> CommandResult {
 }
 
 #[command]
-async fn cowsay(ctx: &SContext, msg: &Message, mut args: Args) -> CommandResult {
+async fn cowsay(ctx: &SContext, msg: &Message, args: Args) -> CommandResult {
     let input =
         if let Some(m) = &msg.referenced_message {
             m.content.as_str()
