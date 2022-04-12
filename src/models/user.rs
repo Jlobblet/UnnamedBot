@@ -75,13 +75,13 @@ impl Queryable<users::SqlType, DB> for User {
 
 impl Insertable<users::table> for User {
     type Values = <(
-        Option<diesel::dsl::Eq<users::user_id, i64>>,
+        diesel::dsl::Eq<users::user_id, i64>,
         Option<diesel::dsl::Eq<users::timezone, String>>,
     ) as Insertable<users::table>>::Values;
 
     fn values(self) -> Self::Values {
         (
-            Some(users::user_id.eq(self.user_id as i64)),
+            users::user_id.eq(self.user_id as i64),
             self.timezone
                 .map(|x| users::timezone.eq(x.name().to_string())),
         )
