@@ -5,7 +5,7 @@ use crate::bot::commands::image::filter::Filter;
 use crate::bot::commands::image::ifunny::add_ifunny_watermark;
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
-use image::{ImageFormat, RgbaImage};
+use image::{ColorType, ImageEncoder, ImageFormat};
 use photon_rs::channels::invert;
 use photon_rs::colour_spaces::hue_rotate_hsv;
 use photon_rs::conv::{gaussian_blur, sharpen};
@@ -20,8 +20,8 @@ use serenity::framework::standard::macros::{command, group};
 use serenity::framework::standard::{Args, CommandResult};
 use serenity::model::prelude::*;
 use std::collections::VecDeque;
+use std::io::Cursor;
 use std::str::FromStr;
-use tempfile::tempdir;
 
 #[derive(Debug, Copy, Clone)]
 enum Transformation {
@@ -38,6 +38,7 @@ enum Transformation {
     Contrast(f32),
     Huerotate(f32),
     Brighten(u8),
+    Jpeg(u8),
     Resize((f32, f32)),
     Sharpen(u8),
     Filter(Filter),
@@ -96,6 +97,7 @@ impl FromStr for Transformation {
                     "contrast" => Ok(Contrast(amount.parse()?)),
                     "huerotate" => Ok(Huerotate(amount.parse()?)),
                     "brighten" => Ok(Brighten(amount.parse()?)),
+                    "jpeg" => Ok(Jpeg(amount.parse()?)),
                     "resize" => Ok(Resize(f32ratio_amount(amount)?)),
                     "sharpen" => Ok(Sharpen(amount.parse()?)),
                     "filter" => Ok(Filter(amount.parse()?)),
@@ -123,6 +125,7 @@ impl Transformation {
             Contrast(c) => adjust_contrast(&mut image, c),
             Huerotate(d) => hue_rotate_hsv(&mut image, d),
             Brighten(value) => inc_brightness(&mut image, value),
+            Jpeg(q) => image = jpeg_encode(image, q).unwrap(),
             Resize((a, b)) => {
                 let width = (image.get_width() as f32 * a) as u32;
                 let height = (image.get_height() as f32 * b) as u32;
@@ -251,25 +254,59 @@ async fn respond_with_image(
     filename: &str,
     image: PhotonImage,
 ) -> Result<Message> {
-    let name = format!("{}.png", filename);
-    let dir = tempdir().context("Could not create temporary directory")?;
-    let file = dir.path().join(&name);
-
-    let image = RgbaImage::from_raw(
-        image.get_width(),
-        image.get_height(),
-        image.get_raw_pixels(),
-    )
-    .context("Failed to load image for saving")?;
-
-    image.save(&file).context("Failed to save image")?;
-
-    let files = vec![file];
+    // Always send the image in PNG format
+    let image = png_encode(image).context("Failed to encode image for reply")?;
+    let pixels = image.get_raw_pixels();
+    let filename = format!("{}.png", filename);
+    let files = vec![(pixels.as_slice(), filename.as_str())];
     msg.channel_id
-        .send_files(ctx, &files, |m| {
+        .send_files(ctx, files.into_iter(), |m| {
             m.reference_message(msg);
             m.allowed_mentions(|a| a.empty_users())
         })
         .await
         .context("Failed to send message")
+}
+
+fn png_encode(image: PhotonImage) -> Result<PhotonImage> {
+    let mut cursor = Cursor::new(Vec::new());
+    let encoder = image::codecs::png::PngEncoder::new(&mut cursor);
+    let pixels = image.get_raw_pixels();
+    encoder
+        .write_image(
+            pixels.as_slice(),
+            image.get_width(),
+            image.get_height(),
+            ColorType::Rgba8,
+        )
+        .context("Failed to write image using encoder")?;
+    cursor.set_position(0);
+    let image = PhotonImage::new(cursor.into_inner(), image.get_width(), image.get_height());
+    Ok(image)
+}
+
+fn jpeg_encode(image: PhotonImage, quality: u8) -> Result<PhotonImage> {
+    // Create a new cursor to write to and then read from.
+    let mut cursor = Cursor::new(Vec::new());
+    // Create a new encoder and write the image to the cursor.
+    let encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut cursor, quality);
+    encoder
+        .write_image(
+            &image.get_raw_pixels(),
+            image.get_width(),
+            image.get_height(),
+            ColorType::Rgba8,
+        )
+        .context("Failed to jpeg encode image")?;
+    // Set the cursor position to the beginning of the buffer.
+    cursor.set_position(0);
+
+    // Read the image from the cursor and convert back to RGBA
+    let image = image::io::Reader::new(cursor)
+        .with_guessed_format()
+        .context("Failed to read image")?
+        .decode()?
+        .to_rgba8();
+    let image = PhotonImage::new(image.to_vec(), image.width(), image.height());
+    Ok(image)
 }
