@@ -30,7 +30,7 @@ pub(crate) async fn after(
         Ok(()) => info!("Processed command '{}'", command_name),
         Err(e) => {
             error!("Command '{}' returned error {:?}", command_name, e);
-            if let Err(e) = msg.reply(ctx, format!("{}", e)).await {
+            if let Err(e) = msg.reply(ctx, format!("{:?}", e)).await {
                 error!(
                     "Failed to send error message for command '{}': {:?}",
                     command_name, e
