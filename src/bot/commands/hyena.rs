@@ -25,12 +25,11 @@ async fn yeen(ctx: &SContext, msg: &Message) -> CommandResult {
 
 #[command]
 async fn cowsay(ctx: &SContext, msg: &Message, args: Args) -> CommandResult {
-    let input =
-        if let Some(m) = &msg.referenced_message {
-            m.content.as_str()
-        } else {
-            args.rest()
-        };
+    let input = if let Some(m) = &msg.referenced_message {
+        m.content.as_str()
+    } else {
+        args.rest()
+    };
 
     let input = input.replace("```", "");
 
@@ -39,7 +38,10 @@ async fn cowsay(ctx: &SContext, msg: &Message, args: Args) -> CommandResult {
         .output()
         .context("Failed to execute `cowsay`")?;
     if !output.status.success() {
-        return Err(CommandError::from(format!("`cowsay` exited with {}", output.status)));
+        return Err(CommandError::from(format!(
+            "`cowsay` exited with {}",
+            output.status
+        )));
     }
     let text = std::str::from_utf8(&output.stdout).context("Failed to parse cowsay output")?;
     let content = format!("```\n{}\n```", text);

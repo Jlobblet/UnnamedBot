@@ -19,10 +19,7 @@ impl TypeMapKey for ShardManagerContainer {
     type Value = Arc<Mutex<ShardManager>>;
 }
 
-pub(crate) fn default_framework(
-    cfg: &Config,
-    groups: &[&'static CommandGroup],
-) -> impl Framework {
+pub(crate) fn default_framework(cfg: &Config, groups: &[&'static CommandGroup]) -> impl Framework {
     let mut framework = StandardFramework::new()
         .configure(|c| c.prefix(cfg.prefix.clone()))
         .before(hooks::before)
