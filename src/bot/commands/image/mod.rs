@@ -151,9 +151,9 @@ impl Transformation {
 
 #[derive(Debug, Parser)]
 struct TransformationOpt {
-    #[clap(short)]
+    #[clap(short, conflicts_with = "image")]
     user: Option<u64>,
-    #[clap(short)]
+    #[clap(short, conflicts_with = "user")]
     image: Option<String>,
     transformations: Vec<Transformation>,
 }
