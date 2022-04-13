@@ -69,34 +69,6 @@ impl FromStr for Transformation {
                     .split_once('=')
                     .with_context(|| anyhow!("{} did not match any of the parameterless verbs and did not contain an `=`", s))?;
 
-                fn f32ratio_amount(amount: &str) -> Result<(f32, f32)> {
-                    let (a, b) = amount
-                        .split_once(':')
-                        .ok_or_else(|| anyhow!("ratio did not contain two parts"))?;
-                    let a = a.parse::<f32>()?;
-                    let b = b.parse::<f32>()?;
-                    if a.is_nan() || a.is_infinite() {
-                        Err(anyhow!("a was nan or infinite"))
-                    } else if b.is_nan() || b.is_infinite() {
-                        Err(anyhow!("b was nan or infinite"))
-                    } else {
-                        Ok((a, b))
-                    }
-                }
-
-                fn f32i32pair_amount(amount: &str) -> Result<(f32, i32)> {
-                    let (a, b) = amount
-                        .split_once(',')
-                        .ok_or_else(|| anyhow!("pair did not contain two parts"))?;
-                    let a = a.parse::<f32>()?;
-                    let b = b.parse::<i32>()?;
-                    if a.is_nan() || a.is_infinite() {
-                        Err(anyhow!("a was nan or infinite"))
-                    } else {
-                        Ok((a, b))
-                    }
-                }
-
                 match t {
                     "blur" => Ok(Blur(amount.parse()?)),
                     "contrast" => Ok(Contrast(amount.parse()?)),
@@ -159,7 +131,7 @@ struct TransformationOpt {
 }
 
 impl TransformationOpt {
-    pub fn apply_all_transformations(&self, mut image: PhotonImage) -> Result<PhotonImage> {
+    pub fn apply_all_transformations(&self, image: PhotonImage) -> Result<PhotonImage> {
         self.transformations
             .iter()
             .fold(Ok(image), |r, t| r.and_then(|i| t.apply(i)))
@@ -225,14 +197,6 @@ fn get_format(url: &str) -> Result<ImageFormat> {
     ImageFormat::from_path(url).context("Unknown image format")
 }
 
-fn get_extension(format: ImageFormat) -> &'static str {
-    if format.can_write() {
-        format.extensions_str()[0]
-    } else {
-        ImageFormat::Png.extensions_str()[0]
-    }
-}
-
 async fn download_image(url: String) -> Result<PhotonImage> {
     let format =
         get_format(&url).context("Could not determine format when attempting to download image")?;
@@ -264,21 +228,6 @@ async fn download_image(url: String) -> Result<PhotonImage> {
 
     let raw_pixels = image.to_rgba8().to_vec();
     Ok(PhotonImage::new(raw_pixels, image.width(), image.height()))
-}
-
-async fn parse_user_avatar(ctx: &SContext, msg: &Message, args: &mut Args) -> Result<PhotonImage> {
-    let user = if args.is_empty() {
-        msg.author.clone()
-    } else {
-        let id = args.single::<u64>()?;
-        let guild = msg
-            .guild(ctx)
-            .await
-            .ok_or_else(|| anyhow!("could not find guild"))?;
-        guild.member(ctx, id).await?.user
-    };
-    let url = user.face();
-    download_image(url).await
 }
 
 async fn respond_with_image(
@@ -342,4 +291,19 @@ fn jpeg_encode(image: PhotonImage, quality: u8) -> Result<PhotonImage> {
         .to_rgba8();
     let image = PhotonImage::new(image.to_vec(), image.width(), image.height());
     Ok(image)
+}
+
+fn f32ratio_amount(amount: &str) -> Result<(f32, f32)> {
+    let (a, b) = amount
+        .split_once(':')
+        .ok_or_else(|| anyhow!("ratio did not contain two parts"))?;
+    let a = a.parse::<f32>()?;
+    let b = b.parse::<f32>()?;
+    if a.is_nan() || a.is_infinite() {
+        Err(anyhow!("a was nan or infinite"))
+    } else if b.is_nan() || b.is_infinite() {
+        Err(anyhow!("b was nan or infinite"))
+    } else {
+        Ok((a, b))
+    }
 }
