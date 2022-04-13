@@ -22,6 +22,11 @@ use serenity::model::prelude::*;
 use std::collections::VecDeque;
 use std::io::Cursor;
 use std::str::FromStr;
+use std::time::Duration;
+use tokio::time::timeout;
+
+// 500 MiB
+const MAX_IMAGE_SIZE: u64 = 500 * 1024 * 1024;
 
 #[derive(Debug, Copy, Clone)]
 enum Transformation {
@@ -109,7 +114,7 @@ impl FromStr for Transformation {
 }
 
 impl Transformation {
-    pub(crate) fn apply(self, mut image: PhotonImage) -> PhotonImage {
+    pub(crate) fn apply(self, mut image: PhotonImage) -> Result<PhotonImage> {
         use Transformation::*;
         match self {
             Invert => invert(&mut image),
@@ -125,16 +130,22 @@ impl Transformation {
             Contrast(c) => adjust_contrast(&mut image, c),
             Huerotate(d) => hue_rotate_hsv(&mut image, d),
             Brighten(value) => inc_brightness(&mut image, value),
-            Jpeg(q) => image = jpeg_encode(image, q).unwrap(),
+            Jpeg(q) => image = jpeg_encode(image, q)?,
             Resize((a, b)) => {
                 let width = (image.get_width() as f32 * a) as u32;
                 let height = (image.get_height() as f32 * b) as u32;
-                image = resize(&image, width, height, SamplingFilter::CatmullRom);
+                if width == 0 || height == 0 {
+                    return Err(anyhow!("Resize to 0 width or height"));
+                } else if (width * height * 4) as u64 > MAX_IMAGE_SIZE {
+                    return Err(anyhow!("Resize too large"));
+                } else {
+                    image = resize(&image, width, height, SamplingFilter::CatmullRom);
+                }
             }
             Sharpen(n) => (0..n).for_each(|_| sharpen(&mut image)),
             Filter(f) => f.apply(&mut image),
         }
-        image
+        Ok(image)
     }
 }
 
@@ -145,6 +156,14 @@ struct TransformationOpt {
     #[clap(short)]
     image: Option<String>,
     transformations: Vec<Transformation>,
+}
+
+impl TransformationOpt {
+    pub fn apply_all_transformations(&self, mut image: PhotonImage) -> Result<PhotonImage> {
+        self.transformations
+            .iter()
+            .fold(Ok(image), |r, t| r.and_then(|i| t.apply(i)))
+    }
 }
 
 #[group]
@@ -169,7 +188,7 @@ async fn transform(ctx: &SContext, msg: &Message, mut args: Args) -> CommandResu
             .user;
         user.face()
     } else {
-        opt.image.unwrap_or_else(|| msg.author.face())
+        opt.image.clone().unwrap_or_else(|| msg.author.face())
     };
     if url.starts_with('<') && url.ends_with('>') {
         let mut chars = url.chars();
@@ -179,10 +198,14 @@ async fn transform(ctx: &SContext, msg: &Message, mut args: Args) -> CommandResu
     }
     let mut image = download_image(url).await?;
 
-    image = opt
-        .transformations
-        .into_iter()
-        .fold(image, |i, t| t.apply(i));
+    image = timeout(
+        Duration::from_secs(10),
+        tokio::task::spawn_blocking(move || opt.apply_all_transformations(image)),
+    )
+    .await
+    .context("Processing timed out")?
+    .context("Failed to join thread")?
+    .context("Could not process image")?;
 
     respond_with_image(ctx, msg, &msg.author.name, image).await?;
     Ok(())
@@ -213,13 +236,22 @@ fn get_extension(format: ImageFormat) -> &'static str {
 async fn download_image(url: String) -> Result<PhotonImage> {
     let format =
         get_format(&url).context("Could not determine format when attempting to download image")?;
+
     let response = get(&url)
         .await
         .with_context(|| anyhow!("Failed to get response from {}", &url))?;
+
+    if let Some(len) = response.content_length() {
+        if len > MAX_IMAGE_SIZE {
+            return Err(anyhow!("Image is too large"));
+        }
+    }
+
     let bytes = response
         .bytes()
         .await
         .context("Failed to get bytes from GET response")?;
+
     let image = if format == ImageFormat::WebP {
         webp::Decoder::new(&bytes)
             .decode()
@@ -229,6 +261,7 @@ async fn download_image(url: String) -> Result<PhotonImage> {
         image::load_from_memory_with_format(&bytes, format)
             .with_context(|| anyhow!("Could not load image with format {:?}", format))?
     };
+
     let raw_pixels = image.to_rgba8().to_vec();
     Ok(PhotonImage::new(raw_pixels, image.width(), image.height()))
 }
