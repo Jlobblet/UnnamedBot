@@ -33,10 +33,7 @@ pub fn default_framework(cfg: &Config, groups: &[&'static CommandGroup]) -> impl
     framework
 }
 
-pub async fn default_client_builder<F>(
-    cfg: &Config,
-    framework: F,
-) -> Result<ClientBuilder<'_>>
+pub async fn default_client_builder<F>(cfg: &Config, framework: F) -> Result<ClientBuilder<'_>>
 where
     F: Framework + Send + Sync + 'static,
 {
