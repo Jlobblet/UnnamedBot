@@ -24,21 +24,23 @@ async fn add(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let command_text = args.rest().to_string();
     let GuildId(guild_id) = msg.guild_id.ok_or("Must be used in a server")?;
 
-    let conn = get_conn(ctx).await;
-    let conn = conn.lock().await;
+    {
+        let conn = get_conn(ctx).await;
+        let conn = conn.lock().await;
 
-    let user = models::user::User::get_or_create(conn.deref(), msg.author.id.0)?;
-    let alias = models::alias::Alias::new(user.user_id, guild_id, command_name, command_text);
+        let user = models::user::User::get_or_create(conn.deref(), msg.author.id.0)?;
+        let alias = models::alias::Alias::new(user.user_id, guild_id, command_name, command_text);
 
-    let query_result = {
-        use schema::aliases::dsl::*;
-        insert_into(aliases).values(alias).execute(conn.deref())
-    };
+        let query_result = {
+            use schema::aliases::dsl::*;
+            insert_into(aliases).values(alias).execute(conn.deref())
+        };
 
-    let message = match query_result {
-        Ok(_) => "Successfully added alias".to_string(),
-        Err(e) => format!("Failed to add alias: {}", e),
-    };
+        let message = match query_result {
+            Ok(_) => "Successfully added alias".to_string(),
+            Err(e) => format!("Failed to add alias: {}", e),
+        };
+    }
 
     msg.reply(&ctx, message).await?;
 
@@ -58,31 +60,33 @@ async fn remove(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
 
     let GuildId(guild_id) = msg.guild_id.ok_or("Must be used in a server")?;
 
-    let conn = get_conn(ctx).await;
-    let conn = conn.lock().await;
+    {
+        let conn = get_conn(ctx).await;
+        let conn = conn.lock().await;
 
-    let UserId(author_id) = msg.author.id;
+        let UserId(author_id) = msg.author.id;
 
-    let alias = models::alias::Alias::search(conn.deref(), &command_name, guild_id)?;
+        let alias = models::alias::Alias::search(conn.deref(), &command_name, guild_id)?;
 
-    let response = if let Some(a) = alias {
-        let GuildId(guild_id) = msg
-            .guild_id
-            .ok_or("Must be used in the guild where the alias was added")?;
+        let response = if let Some(a) = alias {
+            let GuildId(guild_id) = msg
+                .guild_id
+                .ok_or("Must be used in the guild where the alias was added")?;
 
-        let authorised = a.guild_id == guild_id
-            && (a.user_id == author_id
+            let authorised = a.guild_id == guild_id
+                && (a.user_id == author_id
                 || user_is_administrator_in_guild(ctx, guild_id, msg.author.id.0).await);
 
-        if authorised {
-            a.delete(conn.deref())?;
-            "Successfully deleted alias"
+            if authorised {
+                a.delete(conn.deref())?;
+                "Successfully deleted alias"
+            } else {
+                "You are not the owner of this alias or an administrator"
+            }
         } else {
-            "You are not the owner of this alias or an administrator"
-        }
-    } else {
-        "Could not find alias"
-    };
+            "Could not find alias"
+        };
+    }
 
     msg.reply(&ctx, response).await?;
 
