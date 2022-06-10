@@ -11,7 +11,7 @@ impl TypeMapKey for PgConnectionContainer {
     type Value = Arc<Mutex<PgConnection>>;
 }
 
-pub(crate) fn establish_connection(config: &Config) -> Result<PgConnection> {
+pub fn establish_connection(config: &Config) -> Result<PgConnection> {
     PgConnection::establish(&config.database_url)
         .with_context(|| anyhow!("Failed to establish connection to {}", config.database_url))
 }

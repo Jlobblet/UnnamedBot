@@ -16,7 +16,7 @@ use sysinfo::SystemExt;
 #[cfg(feature = "dashboard")]
 use tokio::time::{interval, Instant};
 
-pub(crate) struct Handler;
+pub struct Handler;
 
 #[async_trait]
 impl EventHandler for Handler {

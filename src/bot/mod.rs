@@ -9,17 +9,17 @@ use serenity::Client;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-pub(crate) mod commands;
-pub(crate) mod handler;
-pub(crate) mod hooks;
+pub mod commands;
+pub mod handler;
+pub mod hooks;
 
-pub(crate) struct ShardManagerContainer;
+pub struct ShardManagerContainer;
 
 impl TypeMapKey for ShardManagerContainer {
     type Value = Arc<Mutex<ShardManager>>;
 }
 
-pub(crate) fn default_framework(cfg: &Config, groups: &[&'static CommandGroup]) -> impl Framework {
+pub fn default_framework(cfg: &Config, groups: &[&'static CommandGroup]) -> impl Framework {
     let mut framework = StandardFramework::new()
         .configure(|c| c.prefix(cfg.prefix.clone()))
         .before(hooks::before)
@@ -33,7 +33,7 @@ pub(crate) fn default_framework(cfg: &Config, groups: &[&'static CommandGroup]) 
     framework
 }
 
-pub(crate) async fn default_client_builder<F>(
+pub async fn default_client_builder<F>(
     cfg: &Config,
     framework: F,
 ) -> Result<ClientBuilder<'_>>

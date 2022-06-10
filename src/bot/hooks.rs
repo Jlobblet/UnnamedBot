@@ -8,7 +8,7 @@ use serenity::prelude::*;
 use std::ops::Deref;
 
 #[hook]
-pub(crate) async fn before(ctx: &Context, msg: &Message, cmd_name: &str) -> bool {
+pub async fn before(ctx: &Context, msg: &Message, cmd_name: &str) -> bool {
     info!(
         "Calling command '{}' (invoked by {} at {})",
         cmd_name,
@@ -20,7 +20,7 @@ pub(crate) async fn before(ctx: &Context, msg: &Message, cmd_name: &str) -> bool
 }
 
 #[hook]
-pub(crate) async fn after(
+pub async fn after(
     ctx: &Context,
     msg: &Message,
     command_name: &str,

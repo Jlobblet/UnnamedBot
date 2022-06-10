@@ -13,7 +13,7 @@ struct HyenaUrl {
 
 #[group]
 #[commands(yeen, cowsay)]
-pub(crate) struct Hyena;
+pub struct Hyena;
 
 #[command]
 async fn yeen(ctx: &SContext, msg: &Message) -> CommandResult {

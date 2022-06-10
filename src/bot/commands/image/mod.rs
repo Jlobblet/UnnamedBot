@@ -86,7 +86,7 @@ impl FromStr for Transformation {
 }
 
 impl Transformation {
-    pub(crate) fn apply(self, mut image: PhotonImage) -> Result<PhotonImage> {
+    pub fn apply(self, mut image: PhotonImage) -> Result<PhotonImage> {
         use Transformation::*;
         match self {
             Invert => invert(&mut image),
@@ -140,7 +140,7 @@ impl TransformationOpt {
 
 #[group]
 #[commands(transform, getpfp)]
-pub(crate) struct Image;
+pub struct Image;
 
 #[command]
 async fn transform(ctx: &SContext, msg: &Message, mut args: Args) -> CommandResult {

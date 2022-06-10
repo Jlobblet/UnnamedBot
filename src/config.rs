@@ -6,7 +6,7 @@ use serde_derive::Deserialize;
 use try_traits::default::TryDefault;
 
 #[derive(Debug, Deserialize)]
-pub(crate) struct Config {
+pub struct Config {
     pub discord_api_key: String,
     pub prefix: String,
     pub database_url: String,

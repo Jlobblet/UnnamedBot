@@ -22,7 +22,7 @@ macro_rules! parse_args {
 
 #[group]
 #[commands(ping, test)]
-pub(crate) struct General;
+pub struct General;
 
 #[command]
 async fn ping(ctx: &Context, msg: &Message) -> CommandResult {

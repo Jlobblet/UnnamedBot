@@ -15,25 +15,25 @@ const GROUP_DISCORD_STATS: &str = "Discord Stats";
 const GROUP_SYSTEM_STATS: &str = "System Stats";
 
 #[derive(Debug)]
-pub(crate) struct DashboardComponents {
-    pub(crate) ws_ping_pulse: Pulse,
-    pub(crate) get_ping_pulse: Pulse,
-    pub(crate) message_pulse: Pulse,
-    pub(crate) load_one_pulse: Pulse,
-    pub(crate) load_five_pulse: Pulse,
-    pub(crate) load_fifteen_pulse: Pulse,
-    pub(crate) ram_pulse: Pulse,
-    pub(crate) message_count: AtomicU32,
-    pub(crate) system_info: Mutex<System>,
+pub struct DashboardComponents {
+    pub ws_ping_pulse: Pulse,
+    pub get_ping_pulse: Pulse,
+    pub message_pulse: Pulse,
+    pub load_one_pulse: Pulse,
+    pub load_five_pulse: Pulse,
+    pub load_fifteen_pulse: Pulse,
+    pub ram_pulse: Pulse,
+    pub message_count: AtomicU32,
+    pub system_info: Mutex<System>,
 }
 
-pub(crate) struct DashboardComponentsContainer;
+pub struct DashboardComponentsContainer;
 
 impl TypeMapKey for DashboardComponentsContainer {
     type Value = Arc<DashboardComponents>;
 }
 
-pub(crate) async fn init_dashboard() -> Result<Arc<DashboardComponents>> {
+pub async fn init_dashboard() -> Result<Arc<DashboardComponents>> {
     rillrate::install("unnamed bot").context("Failed to install rillrate")?;
     let mut system_info = System::new_with_specifics(
         RefreshKind::new()

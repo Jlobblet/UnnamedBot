@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 #[group]
 #[commands(alias)]
-pub(crate) struct Alias;
+pub struct Alias;
 
 #[command]
 #[sub_commands(add, remove)]
