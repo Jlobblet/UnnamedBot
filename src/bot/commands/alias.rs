@@ -56,12 +56,14 @@ async fn remove(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
         );
     }
 
+    let GuildId(guild_id) = msg.guild_id.ok_or("Must be used in a server")?;
+
     let conn = get_conn(ctx).await;
     let conn = conn.lock().await;
 
     let UserId(author_id) = msg.author.id;
 
-    let alias = models::alias::Alias::search(conn.deref(), &command_name)?;
+    let alias = models::alias::Alias::search(conn.deref(), &command_name, guild_id)?;
 
     let response = if let Some(a) = alias {
         let GuildId(guild_id) = msg

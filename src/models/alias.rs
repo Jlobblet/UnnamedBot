@@ -28,7 +28,7 @@ impl Alias {
         }
     }
 
-    pub fn search<C>(conn: &C, search_term: &str) -> Result<Option<Alias>>
+    pub fn search<C>(conn: &C, search_term: &str, guild_id: u64) -> Result<Option<Alias>>
     where
         C: Connection<Backend = DB>,
     {
@@ -36,6 +36,7 @@ impl Alias {
         let search_term = compatibility_case_fold(search_term);
 
         aliases
+            .filter(guild_id.eq(guild_id))
             .filter(command_name.ilike(&search_term))
             .first(conn)
             .optional()
