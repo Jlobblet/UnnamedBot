@@ -11,7 +11,6 @@ use crate::database::{establish_connection, PgConnectionContainer};
 use anyhow::{Context, Result};
 use flexi_logger::LogSpecification;
 use log::{debug, info};
-#[cfg(feature = "dashboard")]
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use try_traits::default::TryDefault;
